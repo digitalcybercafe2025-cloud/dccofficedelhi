@@ -1,0 +1,118 @@
+{
+  "name": "digital-cyber-cafe-passport-maker",
+  "version": "2.0.2",
+  "description": "Digital Cyber Cafe - Multi-Customer Passport Photo Maker Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "dev:vite": "vite",
+    "build:vite": "vite build",
+    "build": "vite build",
+    "dev:backend": "clean_env\\Scripts\\python.exe backend/app.py",
+    "build:backend": "clean_env\\Scripts\\python.exe scripts/build_backend.py",
+    "dev": "concurrently -k \"npm run dev:vite\" \"clean_env\\Scripts\\python.exe backend/app.py\" \"wait-on http://localhost:5173 && electron .\"",
+    "start": "electron .",
+    "pack": "vite build && electron-builder --dir",
+    "dist": "vite build && electron-builder",
+    "package-win": "npm run build:vite && npm run build:backend && electron-builder --win"
+  },
+  "keywords": [
+    "passport-photo",
+    "cyber-cafe",
+    "electron",
+    "react",
+    "rembg",
+    "flask"
+  ],
+  "author": "Digital Cyber Cafe",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "dotenv": "^18.0.8",
+    "electron-updater": "^6.8.9",
+    "lucide-react": "^1.16.0",
+    "node-machine-id": "^1.1.12",
+    "pdfjs-dist": "^3.11.174",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-rnd": "^10.5.3",
+    "tesseract.js": "^7.0.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "electron": "^34.0.0",
+    "electron-builder": "^26.15.3",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.1.0",
+    "wait-on": "^8.0.2"
+  },
+  "build": {
+    "appId": "com.digitalcybercafe.passportmaker",
+    "productName": "Digital Cyber Cafe",
+    "icon": "build/icon.ico",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "licenseManager.js",
+      "supabaseLicensing.js",
+      "cloudTracker.js",
+      ".env",
+      "package.json",
+      "build/icon.ico",
+      "build/icon.png"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "pawanji-del",
+        "repo": "dcc-desktop-app"
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/node-machine-id/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources_build/backend",
+        "to": "backend",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "admin_keygen.py",
+        "to": "admin_keygen.py"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "DigitalCyberCafe_Setup_v${version}.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Digital Cyber Cafe"
+    }
+  }
+}

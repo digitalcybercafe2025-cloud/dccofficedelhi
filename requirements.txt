@@ -1,0 +1,13 @@
+# Digital Cyber Cafe v2.0.1 - Pure Lightweight Production Stack (Zero Bloat)
+# Stripped out: torch, torchvision, torchaudio, cuda
+flask>=3.0.0
+flask-cors>=4.0.0
+pillow>=10.0.0
+numpy>=1.26.0
+opencv-python-headless>=4.8.0
+onnxruntime>=1.16.0
+rembg>=2.0.50
+pywin32>=306
+PyMuPDF>=1.24.0
+python-docx>=1.1.0
+pyinstaller>=6.3.0

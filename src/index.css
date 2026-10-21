@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Dedicated Docs Mode Vertical Scrollbar */
+.docs-vertical-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.docs-vertical-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 8px;
+}
+.docs-vertical-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 8px;
+}
+.docs-vertical-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Frameless drag support */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+.titlebar-nodrag {
+  -webkit-app-region: no-drag;
+}
+
+/* Photo transparency checkerboard */
+.checkerboard-bg {
+  background-color: #e5e7eb;
+  background-image: 
+    linear-gradient(45deg, #d1d5db 25%, transparent 25%), 
+    linear-gradient(-45deg, #d1d5db 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, #d1d5db 75%), 
+    linear-gradient(-45deg, transparent 75%, #d1d5db 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+}
+
+/* Guideline pulsing or dashed stroke */
+.guideline-stroke {
+  stroke-dasharray: 6 4;
+}
+
+/* Strict A4 Isolation for Hardware Direct Print */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide Navbar, Left Panel, Center Panel, Right Panel UI controls, modals, and toolbars */
+  header,
+  nav,
+  .no-print,
+  [data-html2canvas-ignore="true"],
+  .titlebar-drag,
+  .titlebar-nodrag,
+  #app-header,
+  #left-panel,
+  #center-editor,
+  #output-controls,
+  #preview-header,
+  .row-action-bar,
+  .watermark-badge {
+    display: none !important;
+  }
+
+  /* Reset layout structure for print target */
+  main {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  #right-panel {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  #print-preview-scroll-container,
+  #idcard-print-scroll-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* ONLY the .a4-sheet element should be visible, occupying full page with zero margins */
+  .a4-sheet,
+  #a4-print-sheet,
+  #a4-idcard-sheet {
+    display: flex !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    min-height: 100vh !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+    background: #ffffff !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+  }
+
+  .print-id-side {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  #a4-idcard-sheet {
+    padding-left: var(--print-margin-x, 14mm) !important;
+    padding-right: var(--print-margin-x, 14mm) !important;
+    padding-top: var(--print-margin-y, 21mm) !important;
+    padding-bottom: var(--print-margin-y, 21mm) !important;
+  }
+
+  .idcard-pair-wrapper {
+    position: relative !important;
+    left: var(--card-offset-x-print, 0mm) !important;
+    top: var(--card-offset-y-print, 0mm) !important;
+    margin-bottom: var(--card-gap-print, 7mm) !important;
+    transform: none !important;
+  }
+}
+
+/* Print preview ID Card side border reset */
+.print-id-side {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+

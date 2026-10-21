@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build and Packaging Outputs
+dist/
+release/
+build_temp/
+resources_build/
+*.exe
+*.log
+stdout.txt
+stderr.txt
+dcc_license.dat
+desktop.ini
+
+# Root Temporary Debug Images
+roi.png
+row*.png
+simulated_align.png
+
+# Python Environments & Caches
+clean_env/
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Heavy Models and Weights (>50MB)
+*.onnx
+*.pth
+eng.traineddata
+gfpgan/
+
+# System Files
+.DS_Store
+Thumbs.db
