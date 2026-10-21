@@ -9,7 +9,7 @@ import ColorAdjustModal from './components/modals/ColorAdjustModal';
 import SettingsModal from './components/modals/SettingsModal';
 import PrintHubWindow from './components/printhub/PrintHubWindow';
 import { INITIAL_CUSTOMERS } from './utils/sampleData';
-import { silentSyncWithSupabase } from './utils/supabase';
+import { silentSyncWithSupabase, isMasterAdminId } from './utils/supabase';
 import {
   checkBackendHealth,
   removeBackground,
@@ -129,6 +129,23 @@ export default function App() {
 
       if (window.electronAPI?.getMachineId) {
         mid = await window.electronAPI.getMachineId();
+      }
+
+      // Master Admin Hardware Auto-Unlock (Primary PC + Second PC)
+      if (isMasterAdminId(mid)) {
+        const masterMerged = {
+          isUnlocked: true,
+          isMaster: true,
+          isBlocked: false,
+          isTrialExpired: false,
+          daysLeft: 9999,
+          machineId: mid,
+          plan: 'MASTER_ADMIN',
+          status: 'active',
+          expiryDate: 'Lifetime Admin Access'
+        };
+        setLicenseStatus(masterMerged);
+        return masterMerged;
       }
 
       if (window.electronAPI?.validateServerLicense) {

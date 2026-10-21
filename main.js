@@ -522,9 +522,13 @@ ipcMain.handle('get-admin-licenses', async () => {
   return await supabaseLicensing.getAdminLicenseList(mid);
 });
 
-ipcMain.handle('update-client-status', async (event, { targetMachineId, newStatus }) => {
+ipcMain.handle('update-client-status', async (event, { targetMachineId, newStatus, planCode }) => {
   const mid = licenseManager.machineId;
-  return await supabaseLicensing.updateClientStatus(mid, targetMachineId, newStatus);
+  return await supabaseLicensing.updateClientStatus(mid, targetMachineId, newStatus, planCode);
+});
+
+ipcMain.handle('generate-offline-key', async (event, { targetMachineId, planCode }) => {
+  return supabaseLicensing.generateOfflineKey(targetMachineId, planCode);
 });
 
 // Silent Network-Aware Cloud Sync (Supabase)

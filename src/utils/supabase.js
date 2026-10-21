@@ -8,10 +8,19 @@ const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqY2V4dW9yaXdldmFzaml4d2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0OTg4NjMsImV4cCI6MjEwODA3NDg2M30.8zvIOP2m3_gOB8Jd5hDjY_jnNjihEBOB5uOSHuLKcVw';
 
-export const MASTER_MACHINE_ID =
+export const MASTER_ADMIN_IDS = [
   (import.meta.env.VITE_MASTER_MACHINE_ID || 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4')
     .trim()
-    .toLowerCase();
+    .toLowerCase(),
+  '0da4524e-dcec-44fb-9459-8ebfb80e8725'
+];
+
+export const MASTER_MACHINE_ID = MASTER_ADMIN_IDS[0];
+
+export function isMasterAdminId(mid) {
+  if (!mid) return false;
+  return MASTER_ADMIN_IDS.includes(String(mid).trim().toLowerCase());
+}
 
 let client = null;
 try {

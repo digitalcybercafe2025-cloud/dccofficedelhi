@@ -26,6 +26,7 @@ const apiElectronAPI = {
   clientOnboard: (payload) => ipcRenderer.invoke('client-onboard', payload),
   getAdminLicenses: () => ipcRenderer.invoke('get-admin-licenses'),
   updateClientStatus: (payload) => ipcRenderer.invoke('update-client-status', payload),
+  generateOfflineKey: (payload) => ipcRenderer.invoke('generate-offline-key', payload),
   silentSync: (payload) => ipcRenderer.invoke('silent-sync', payload),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates')
 };

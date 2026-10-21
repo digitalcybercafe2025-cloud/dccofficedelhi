@@ -9,7 +9,15 @@ const os = require('os');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://yjcexuoriwevasjixwkh.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
-const MASTER_MACHINE_ID = (process.env.MASTER_MACHINE_ID || 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4').trim().toLowerCase();
+const MASTER_MACHINE_IDS = [
+  (process.env.MASTER_MACHINE_ID || 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4').trim().toLowerCase(),
+  '0da4524e-dcec-44fb-9459-8ebfb80e8725'
+];
+
+function isMasterAdminId(mid) {
+  if (!mid) return false;
+  return MASTER_MACHINE_IDS.includes(String(mid).trim().toLowerCase());
+}
 
 try {
   global.WebSocket = require('ws');
@@ -31,7 +39,7 @@ try {
  */
 async function validateLicenseWithServer(machineId) {
   const mid = String(machineId || '').trim().toLowerCase();
-  const isMaster = mid === MASTER_MACHINE_ID;
+  const isMaster = isMasterAdminId(mid);
 
   if (isMaster) {
     return {
@@ -261,8 +269,7 @@ async function registerClientOnboarding(payload) {
  * Hardware-Locked Admin Dashboard Query (All Licenses)
  */
 async function getAdminLicenseList(requestingMachineId) {
-  const reqMid = String(requestingMachineId || '').trim().toLowerCase();
-  if (reqMid !== MASTER_MACHINE_ID) {
+  if (!isMasterAdminId(requestingMachineId)) {
     throw new Error('UNAUTHORIZED: Access restricted exclusively to Master Hardware.');
   }
 
@@ -280,11 +287,10 @@ async function getAdminLicenseList(requestingMachineId) {
 }
 
 /**
- * Toggle Client Status (Block / Unblock / Grant Lifetime)
+ * Update Client Subscription Status (Activate, Change Plan, Extend Trial, Block)
  */
-async function updateClientStatus(requestingMachineId, targetMachineId, newStatus) {
-  const reqMid = String(requestingMachineId || '').trim().toLowerCase();
-  if (reqMid !== MASTER_MACHINE_ID) {
+async function updateClientStatus(requestingMachineId, targetMachineId, newStatus, planCode) {
+  if (!isMasterAdminId(requestingMachineId)) {
     throw new Error('UNAUTHORIZED: Access restricted exclusively to Master Hardware.');
   }
 
@@ -295,7 +301,22 @@ async function updateClientStatus(requestingMachineId, targetMachineId, newStatu
     updated_at: new Date().toISOString()
   };
 
-  if (newStatus === 'lifetime') {
+  const planDurationDays = {
+    '1M': 30,
+    '3M': 90,
+    '6M': 180,
+    '12M': 365,
+    '1Y': 365,
+    'TRIAL': 7,
+    'LIFETIME': 3650
+  };
+
+  if (planCode) {
+    const p = String(planCode).toUpperCase();
+    updateFields.plan = p;
+    const days = planDurationDays[p] || 30;
+    updateFields.expiry_date = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  } else if (newStatus === 'lifetime') {
     updateFields.plan = 'LIFETIME';
     updateFields.expiry_date = new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).toISOString();
   }
@@ -311,11 +332,36 @@ async function updateClientStatus(requestingMachineId, targetMachineId, newStatu
   return { success: true, record: data };
 }
 
+/**
+ * Generate Offline Activation Key for Admin Panel
+ */
+function generateOfflineKey(targetMachineId, planCode = '12M') {
+  const crypto = require('crypto');
+  const cleanMid = String(targetMachineId || '').trim().toLowerCase();
+  const cleanPlan = String(planCode || '12M').trim().toUpperCase();
+
+  const hmac = crypto
+    .createHmac('sha256', 'dcc_master_secure_2026')
+    .update(`${cleanMid}::${cleanPlan}`)
+    .digest('hex')
+    .toUpperCase();
+
+  const sig = hmac.slice(0, 16);
+  const formatted = `${sig.slice(0, 4)}-${sig.slice(4, 8)}-${sig.slice(8, 12)}-${sig.slice(12, 16)}`;
+  return {
+    key: `DCC-${cleanPlan}-${formatted}`,
+    formattedKey: formatted,
+    plan: cleanPlan
+  };
+}
+
 module.exports = {
-  MASTER_MACHINE_ID,
+  MASTER_MACHINE_IDS,
+  isMasterAdminId,
   validateLicenseWithServer,
   silentBackgroundSync,
   registerClientOnboarding,
   getAdminLicenseList,
-  updateClientStatus
+  updateClientStatus,
+  generateOfflineKey
 };

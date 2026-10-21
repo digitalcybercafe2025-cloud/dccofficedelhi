@@ -15,7 +15,10 @@ import {
 } from 'lucide-react';
 import AdminDashboardModal from './AdminDashboardModal';
 
-const MASTER_HARDWARE_ID = 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4';
+const MASTER_HARDWARE_IDS = [
+  'e08fe0d4-fddc-4ede-9c15-460ccabb22c4',
+  '0da4524e-dcec-44fb-9459-8ebfb80e8725'
+];
 
 export default function SettingsModal({
   isOpen,
@@ -69,12 +72,12 @@ export default function SettingsModal({
   if (!isOpen) return null;
 
   const isMasterAdmin =
-    (machineId && machineId.trim().toLowerCase() === MASTER_HARDWARE_ID.trim().toLowerCase()) ||
+    (machineId && MASTER_HARDWARE_IDS.includes(machineId.trim().toLowerCase())) ||
     machineId === 'BROWSER-DEV-MODE' ||
     !window.electronAPI;
 
   const displayMachineId = (!window.electronAPI || machineId === 'BROWSER-DEV-MODE')
-    ? MASTER_HARDWARE_ID
+    ? MASTER_HARDWARE_IDS[0]
     : (machineId || 'Detecting hardware ID...');
 
   const handleSaveOnboarding = async (e) => {
