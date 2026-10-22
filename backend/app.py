@@ -67,6 +67,22 @@ def get_resource_path(subpath):
         return p3
     return p1
 
+def get_cascade_path(cname):
+    candidates = []
+    meipass = getattr(sys, '_MEIPASS', None)
+    if meipass:
+        candidates.append(os.path.join(meipass, 'cv2', 'data', cname))
+        candidates.append(os.path.join(meipass, cname))
+    if hasattr(cv2, 'data') and hasattr(cv2.data, 'haarcascades') and cv2.data.haarcascades:
+        candidates.append(os.path.join(cv2.data.haarcascades, cname))
+    candidates.append(os.path.join(APP_ROOT, 'cv2', 'data', cname))
+    candidates.append(os.path.join(APP_ROOT, 'models', cname))
+    candidates.append(os.path.join(os.path.dirname(APP_ROOT), 'cv2', 'data', cname))
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return candidates[0] if candidates else cname
+
 # Configure offline model cache for rembg (IS-Net / U2Net ONNX Engine) before rembg import
 local_models = get_resource_path('models')
 if os.path.exists(local_models):
@@ -269,25 +285,31 @@ def detect_idcard_face(bgr_img):
     best_face = None
     max_area = 0
     
-    for cname in cascade_names:
-        cascade_path = cv2.data.haarcascades + cname
-        classifier = cv2.CascadeClassifier(cascade_path)
-        if classifier.empty():
-            continue
-        faces = classifier.detectMultiScale(
-            gray,
-            scaleFactor=1.1,
-            minNeighbors=3,
-            minSize=(int(w * 0.08), int(h * 0.10)),
-            maxSize=(int(w * 0.85), int(h * 0.90))
-        )
-        for (fx, fy, fw, fh) in faces:
-            area = fw * fh
-            if area > max_area:
-                max_area = area
-                best_face = (int(fx), int(fy), int(fw), int(fh))
-        if best_face is not None:
-            break
+    if hasattr(cv2, 'CascadeClassifier'):
+        for cname in cascade_names:
+            try:
+                cascade_path = get_cascade_path(cname)
+                if not os.path.exists(cascade_path):
+                    continue
+                classifier = cv2.CascadeClassifier(cascade_path)
+                if classifier is None or classifier.empty():
+                    continue
+                faces = classifier.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=3,
+                    minSize=(int(w * 0.08), int(h * 0.10)),
+                    maxSize=(int(w * 0.85), int(h * 0.90))
+                )
+                for (fx, fy, fw, fh) in faces:
+                    area = fw * fh
+                    if area > max_area:
+                        max_area = area
+                        best_face = (int(fx), int(fy), int(fw), int(fh))
+                if best_face is not None:
+                    break
+            except Exception as e_cascade:
+                print(f"[Cascade Notice] {cname} detection skip: {e_cascade}")
 
     # If Haar didn't detect, check if it's already a cropped passport face (portrait aspect ~ 0.65 - 0.95)
     if best_face is None:
@@ -561,10 +583,10 @@ def generate_sheet():
                 raw_photo = decode_base64_image(img_b64).convert("RGB")
                 passport_photo = raw_photo.resize((PHOTO_W, PHOTO_H), Image.Resampling.LANCZOS)
                 
-                # Add crisp cutting border in solid dark black
+                # Add clean cutting border in professional soft gray (#CCCCCC)
                 if add_cut_border:
                     p_draw = ImageDraw.Draw(passport_photo)
-                    p_draw.rectangle([0, 0, PHOTO_W - 1, PHOTO_H - 1], outline=(0, 0, 0), width=1)
+                    p_draw.rectangle([0, 0, PHOTO_W - 1, PHOTO_H - 1], outline=(204, 204, 204), width=1)
 
                 for _ in range(count):
                     if current_idx >= max_slots:
@@ -617,7 +639,7 @@ def generate_sheet():
                         p_img = p_img.resize((PHOTO_W, PHOTO_H), Image.Resampling.LANCZOS)
                         if add_cut_border:
                             p_draw = ImageDraw.Draw(p_img)
-                            p_draw.rectangle([0, 0, PHOTO_W - 1, PHOTO_H - 1], outline=(0, 0, 0), width=1)
+                            p_draw.rectangle([0, 0, PHOTO_W - 1, PHOTO_H - 1], outline=(204, 204, 204), width=1)
                         p_buf = io.BytesIO()
                         p_img.save(p_buf, format="JPEG", quality=95)
                         photo_bytes = p_buf.getvalue()
@@ -697,7 +719,7 @@ def export_single_photo():
             resized = rgb_img.resize((target_w, target_h), Image.Resampling.LANCZOS)
             if add_cut_border:
                 p_draw = ImageDraw.Draw(resized)
-                p_draw.rectangle([0, 0, target_w - 1, target_h - 1], outline=(0, 0, 0), width=1)
+                p_draw.rectangle([0, 0, target_w - 1, target_h - 1], outline=(204, 204, 204), width=1)
             
             buffered = io.BytesIO()
             quality = 95
@@ -715,7 +737,7 @@ def export_single_photo():
             resized = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
             if add_cut_border:
                 p_draw = ImageDraw.Draw(resized)
-                p_draw.rectangle([0, 0, target_w - 1, target_h - 1], outline=(0, 0, 0), width=1)
+                p_draw.rectangle([0, 0, target_w - 1, target_h - 1], outline=(204, 204, 204), width=1)
             buffered = io.BytesIO()
             resized.save(buffered, format="PNG", dpi=(dpi, dpi))
             mime = "image/png"
@@ -824,14 +846,14 @@ def convert_pdf():
 
         page_num = min(max(0, page_num), len(doc) - 1)
         page = doc.load_page(page_num)
-        pix = page.get_pixmap(dpi=dpi)
+        pix = page.get_pixmap(dpi=dpi, annots=True)
         png_bytes = pix.tobytes("png")
         b64_img = base64.b64encode(png_bytes).decode('utf-8')
         # Render up to 2 pages (for multi-page ID cards like Ayushman PM-JAY)
         pages_b64 = []
         for i in range(min(2, len(doc))):
             p = doc.load_page(i)
-            pix_p = p.get_pixmap(dpi=dpi)
+            pix_p = p.get_pixmap(dpi=dpi, annots=True)
             b64 = base64.b64encode(pix_p.tobytes("png")).decode('utf-8')
             pages_b64.append(f"data:image/png;base64,{b64}")
 
@@ -1485,24 +1507,28 @@ def detect_id_photo(front_bgr):
     h, w = front_bgr.shape[:2]
     try:
         gray = cv2.cvtColor(front_bgr, cv2.COLOR_BGR2GRAY)
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=3, minSize=(int(h * 0.08), int(h * 0.08)))
-        if len(faces) > 0:
-            best_face = max(faces, key=lambda f: f[2] * f[3])
-            fx, fy, fw, fh = best_face
-            cx = fx + fw / 2.0
-            photo_w = fw * 1.65
-            photo_h = fh * 2.1
-            px1 = max(0, int(cx - photo_w / 2.0))
-            py1 = max(0, int(fy - fh * 0.35))
-            px2 = min(w, int(px1 + photo_w))
-            py2 = min(h, int(py1 + photo_h))
-            return {
-                "x": round((px1 / float(w)) * 100.0, 1),
-                "y": round((py1 / float(h)) * 100.0, 1),
-                "width": round(((px2 - px1) / float(w)) * 100.0, 1),
-                "height": round(((py2 - py1) / float(h)) * 100.0, 1)
-            }
+        if hasattr(cv2, 'CascadeClassifier'):
+            cascade_path = get_cascade_path('haarcascade_frontalface_default.xml')
+            if os.path.exists(cascade_path):
+                face_cascade = cv2.CascadeClassifier(cascade_path)
+                if face_cascade and not face_cascade.empty():
+                    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=3, minSize=(int(h * 0.08), int(h * 0.08)))
+                    if len(faces) > 0:
+                        best_face = max(faces, key=lambda f: f[2] * f[3])
+                        fx, fy, fw, fh = best_face
+                        cx = fx + fw / 2.0
+                        photo_w = fw * 1.65
+                        photo_h = fh * 2.1
+                        px1 = max(0, int(cx - photo_w / 2.0))
+                        py1 = max(0, int(fy - fh * 0.35))
+                        px2 = min(w, int(px1 + photo_w))
+                        py2 = min(h, int(py1 + photo_h))
+                        return {
+                            "x": round((px1 / float(w)) * 100.0, 1),
+                            "y": round((py1 / float(h)) * 100.0, 1),
+                            "width": round(((px2 - px1) / float(w)) * 100.0, 1),
+                            "height": round(((py2 - py1) / float(h)) * 100.0, 1)
+                        }
     except Exception as e:
         print(f"Face photo detection error: {e}")
         

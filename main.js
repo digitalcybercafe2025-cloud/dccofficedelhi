@@ -386,12 +386,12 @@ ipcMain.on('execute-direct-print', async (event, data = {}) => {
 ipcMain.on('execute-advanced-print', (event, data = {}) => {
   if (!printWindow || printWindow.isDestroyed()) return;
   const printOptions = {
-    silent: false,
+    silent: data.silent !== undefined ? data.silent : true,
     printBackground: true,
     color: data.colorMode !== 'grayscale',
     copies: parseInt(data.copies, 10) || 1,
     pageSize: 'A4',
-    margins: { marginType: 'none' }
+    margins: { marginType: 'printableArea' }
   };
   if (data.printerName) {
     printOptions.deviceName = data.printerName;
@@ -416,11 +416,12 @@ ipcMain.on('close-print-window', () => {
 ipcMain.on('print-document', (event, options = {}) => {
   if (!mainWindow) return;
   mainWindow.webContents.print({
-    silent: false,
+    silent: options.silent !== undefined ? options.silent : true,
     printBackground: true,
+    color: options.color !== undefined ? options.color : true,
     deviceName: options.deviceName || '',
     pageSize: 'A4',
-    margins: { marginType: 'none' }
+    margins: { marginType: 'printableArea' }
   });
 });
 
@@ -429,11 +430,12 @@ ipcMain.handle('print-document', async (event, options = {}) => {
   
   return new Promise((resolve) => {
     mainWindow.webContents.print({
-      silent: false,
+      silent: options.silent !== undefined ? options.silent : true,
       printBackground: true,
+      color: options.color !== undefined ? options.color : true,
       deviceName: options.deviceName || '',
       pageSize: 'A4',
-      margins: { marginType: 'none' }
+      margins: { marginType: 'printableArea' }
     }, (success, failureReason) => {
       if (!success) {
         resolve({ success: false, error: failureReason });

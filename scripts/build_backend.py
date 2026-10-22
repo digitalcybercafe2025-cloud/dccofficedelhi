@@ -27,6 +27,19 @@ def build_backend():
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(build_work_dir, exist_ok=True)
 
+    # Find cv2 Haar cascades directory
+    cv2_data_dir = None
+    try:
+        import cv2
+        if hasattr(cv2, 'data') and hasattr(cv2.data, 'haarcascades'):
+            cv2_data_dir = cv2.data.haarcascades
+    except Exception:
+        pass
+    if not cv2_data_dir or not os.path.exists(cv2_data_dir):
+        fallback_cv2 = os.path.join(project_root, 'clean_env', 'Lib', 'site-packages', 'cv2', 'data')
+        if os.path.exists(fallback_cv2):
+            cv2_data_dir = fallback_cv2
+
     # 1. Run PyInstaller with STRICT exclusion of PyTorch and heavy bloat
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -47,9 +60,15 @@ def build_backend():
         "--hidden-import", "onnxruntime",
         "--hidden-import", "rembg",
         "--hidden-import", "fitz",
+        "--hidden-import", "pymupdf",
         "--hidden-import", "docx",
-        backend_script
+        "--collect-all", "pymupdf",
+        "--collect-all", "fitz",
+        "--collect-data", "cv2",
     ]
+    if cv2_data_dir and os.path.exists(cv2_data_dir):
+        cmd.extend(["--add-data", f"{cv2_data_dir}{os.pathsep}cv2/data"])
+    cmd.append(backend_script)
 
     print("\n[Step 1/3] Compiling ultra-fast lightweight Python backend...")
     print("Executing:", " ".join(cmd))
@@ -102,6 +121,18 @@ def build_backend():
         if not os.path.exists(dst_ocr) or os.path.getsize(dst_ocr) != os.path.getsize(eng_ocr):
             print(f"Copying OCR model eng.traineddata -> {dst_ocr}...")
             shutil.copy2(eng_ocr, dst_ocr)
+
+    # Copy cv2 Haar cascades to target backend directory as well
+    if cv2_data_dir and os.path.exists(cv2_data_dir):
+        target_cv2_dir = os.path.join(output_dir, 'cv2', 'data')
+        os.makedirs(target_cv2_dir, exist_ok=True)
+        for item in os.listdir(cv2_data_dir):
+            if item.endswith('.xml'):
+                s_file = os.path.join(cv2_data_dir, item)
+                d_file = os.path.join(target_cv2_dir, item)
+                if not os.path.exists(d_file):
+                    shutil.copy2(s_file, d_file)
+        print("Bundled OpenCV Haar Cascades ->", target_cv2_dir)
 
     print("\n[Step 3/3] Lightweight backend bundle ready in:", output_dir)
     print("Files in target backend bundle:")

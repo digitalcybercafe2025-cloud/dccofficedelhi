@@ -149,7 +149,7 @@ export default function PrintPreview({
                       {row.photos.map((photo, pIdx) => (
                         <div
                           key={`${row.rowIndex}-${pIdx}`}
-                          className={`group relative aspect-[3.5/4.5] bg-slate-100 rounded-xs overflow-hidden border border-black shadow-2xs transition-all ${
+                          className={`group relative aspect-[3.5/4.5] bg-slate-100 rounded-xs overflow-hidden border border-[#CCCCCC] shadow-2xs transition-all ${
                             isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''
                           }`}
                           title={`${photo.code} (Row ${row.rowIndex + 1}, Col ${pIdx + 1})`}
