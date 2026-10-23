@@ -1,3 +1,7 @@
+import sample1 from '../assets/1000695901.png';
+import sample2 from '../assets/1000695908.png';
+import sample3 from '../assets/1000695907.png';
+
 // High quality SVG data URIs for sample customer photos matching reference screenshot
 
 function createAvatarSvg(bgGradient, hairColor, skinColor, dressColor, isFemale = true, bindi = false) {
@@ -68,44 +72,44 @@ export const INITIAL_CUSTOMERS = [
   {
     id: 'c1',
     code: 'C1',
-    name: 'Customer 1',
+    name: 'Photo 1',
     copies: 6,
-    image: createAvatarSvg(['#38bdf8', '#0284c7'], '#1e293b', '#e2a97e', '#0284c7', true, true)
+    image: sample1
   },
   {
     id: 'c2',
     code: 'C2',
-    name: 'Customer 2',
+    name: 'Photo 2',
     copies: 6,
-    image: createAvatarSvg(['#60a5fa', '#2563eb'], '#1e293b', '#d89b6f', '#1d4ed8', true, true)
+    image: sample2
   },
   {
     id: 'c3',
     code: 'C3',
-    name: 'Customer 3',
+    name: 'Photo 3',
     copies: 6,
-    image: createAvatarSvg(['#38bdf8', '#0284c7'], '#1e293b', '#f2bd93', '#db2777', true, true)
+    image: sample3
   },
   {
     id: 'c4',
     code: 'C4',
-    name: 'Customer 4',
+    name: 'Photo 4',
     copies: 6,
-    image: createAvatarSvg(['#93c5fd', '#3b82f6'], '#0f172a', '#e0a377', '#1e293b', false, false)
+    image: sample1
   },
   {
     id: 'c5',
     code: 'C5',
-    name: 'Customer 5',
+    name: 'Photo 5',
     copies: 6,
-    image: createAvatarSvg(['#38bdf8', '#0284c7'], '#0f172a', '#d99e74', '#334155', false, false)
+    image: sample2
   },
   {
     id: 'c6',
     code: 'C6',
-    name: 'Customer 6',
+    name: 'Photo 6',
     copies: 6,
-    image: createAvatarSvg(['#60a5fa', '#2563eb'], '#1e293b', '#e6b288', '#0f766e', true, true)
+    image: sample3
   },
   {
     id: 'c7',

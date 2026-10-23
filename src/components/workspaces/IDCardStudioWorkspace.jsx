@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import IDCardTypeSelector from '../idcard/IDCardTypeSelector';
 import IDCardToolsPanel from '../idcard/IDCardToolsPanel';
 import IDCardEditorCanvas from '../idcard/IDCardEditorCanvas';
@@ -57,14 +57,41 @@ export default function IDCardStudioWorkspace({ activePrinter = 'Epson L3560' })
     }
   ]);
 
-  // 8. Output & Layout Controls
+  // 8. Output & Layout Controls with Persistent Margin Memory
   const [layoutFormat, setLayoutFormat] = useState('PNG');
-  const [marginX, setMarginX] = useState(16);
-  const [marginY, setMarginY] = useState(24);
+  const [marginX, setMarginX] = useState(() => {
+    try {
+      const saved = localStorage.getItem('idMarginX');
+      return saved !== null && !isNaN(Number(saved)) ? Number(saved) : 16;
+    } catch (e) {
+      return 16;
+    }
+  });
+  const [marginY, setMarginY] = useState(() => {
+    try {
+      const saved = localStorage.getItem('idMarginY');
+      return saved !== null && !isNaN(Number(saved)) ? Number(saved) : 24;
+    } catch (e) {
+      return 24;
+    }
+  });
   const [cardGap, setCardGap] = useState(10);
   const [isExporting, setIsExporting] = useState(false);
   const [exportingFormat, setExportingFormat] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
+
+  // Sync margin adjustments to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('idMarginX', marginX);
+    } catch (e) {}
+  }, [marginX]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('idMarginY', marginY);
+    } catch (e) {}
+  }, [marginY]);
 
   // Switch ID Card Template
   const handleSelectType = (typeId) => {

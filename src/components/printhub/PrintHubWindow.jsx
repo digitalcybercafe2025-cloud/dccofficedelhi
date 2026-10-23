@@ -511,7 +511,7 @@ export default function PrintHubWindow() {
                 photoQueue.length > 0 && (
                   <div className="grid grid-cols-6 gap-2">
                     {photoQueue.map((item, idx) => (
-                      <div key={idx} className="aspect-[3.5/4.5] bg-white border border-slate-200 overflow-hidden">
+                      <div key={idx} className="aspect-[3.5/4.5] bg-white overflow-hidden" style={{ border: '1px solid #808080' }}>
                         <img src={item.image} alt="Photo" className="w-full h-full object-cover" />
                       </div>
                     ))}

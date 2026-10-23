@@ -1,4 +1,5 @@
 import React from 'react';
+import companyLogo from '../../assets/logo.png';
 import { X, Phone, MapPin, Check, Copy, ExternalLink, Sparkles, Monitor, Code, Globe, Smartphone, Wrench } from 'lucide-react';
 
 export default function LogoLightboxModal({ isOpen, onClose }) {
@@ -47,7 +48,7 @@ export default function LogoLightboxModal({ isOpen, onClose }) {
           <div className="relative group p-1.5 rounded-full bg-gradient-to-tr from-amber-400 via-cyan-400 to-blue-600 shadow-xl shadow-amber-500/20 mb-4 animate-in zoom-in duration-300">
             <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-full overflow-hidden bg-slate-950 flex items-center justify-center border-2 border-slate-900">
               <img
-                src="/1000692542.png"
+                src={companyLogo}
                 alt="Digital Cyber Cafe"
                 className="w-full h-full object-contain transform transition-transform duration-300 group-hover:scale-105"
               />

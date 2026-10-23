@@ -12,6 +12,7 @@ import {
   Clock
 } from 'lucide-react';
 import LogoLightboxModal from './modals/LogoLightboxModal';
+import companyLogo from '../assets/logo.png';
 
 export default function Header({
   shopName = 'Digital Cyber Cafe',
@@ -123,12 +124,9 @@ export default function Header({
           >
             <div className="w-full h-full rounded-full overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-900">
               <img
-                src="/1000692542.png"
+                src={companyLogo}
                 alt="Digital Cyber Cafe Logo"
                 className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-200"
-                onError={(e) => {
-                  e.currentTarget.src = '/logo.png';
-                }}
               />
             </div>
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>

@@ -181,6 +181,8 @@ def decode_base64_image(image_data_uri):
     """Decode base64 data URI to PIL Image"""
     if ',' in image_data_uri:
         image_data_uri = image_data_uri.split(',', 1)[1]
+    image_data_uri = image_data_uri.strip()
+    image_data_uri += '=' * (-len(image_data_uri) % 4)
     image_bytes = base64.b64decode(image_data_uri)
     image = Image.open(io.BytesIO(image_bytes))
     return image.convert("RGBA")
@@ -212,6 +214,12 @@ def remove_background():
         
         if not image_str:
             return jsonify({"error": "No image provided"}), 400
+
+        # Strip data URL header if present and dynamically fix padding
+        if ',' in image_str:
+            image_str = image_str.split(',', 1)[1]
+        image_str = image_str.strip()
+        image_str += '=' * (-len(image_str) % 4)
 
         pil_img = decode_base64_image(image_str)
 
@@ -583,10 +591,10 @@ def generate_sheet():
                 raw_photo = decode_base64_image(img_b64).convert("RGB")
                 passport_photo = raw_photo.resize((PHOTO_W, PHOTO_H), Image.Resampling.LANCZOS)
                 
-                # Add clean cutting border in professional soft gray (#CCCCCC)
+                # Add clean cutting border in balanced medium gray (#808080)
                 if add_cut_border:
                     p_draw = ImageDraw.Draw(passport_photo)
-                    p_draw.rectangle([0, 0, PHOTO_W - 1, PHOTO_H - 1], outline=(204, 204, 204), width=1)
+                    p_draw.rectangle([0, 0, PHOTO_W - 1, PHOTO_H - 1], outline=(128, 128, 128), width=1)
 
                 for _ in range(count):
                     if current_idx >= max_slots:
@@ -639,7 +647,7 @@ def generate_sheet():
                         p_img = p_img.resize((PHOTO_W, PHOTO_H), Image.Resampling.LANCZOS)
                         if add_cut_border:
                             p_draw = ImageDraw.Draw(p_img)
-                            p_draw.rectangle([0, 0, PHOTO_W - 1, PHOTO_H - 1], outline=(204, 204, 204), width=1)
+                            p_draw.rectangle([0, 0, PHOTO_W - 1, PHOTO_H - 1], outline=(128, 128, 128), width=1)
                         p_buf = io.BytesIO()
                         p_img.save(p_buf, format="JPEG", quality=95)
                         photo_bytes = p_buf.getvalue()
@@ -719,7 +727,7 @@ def export_single_photo():
             resized = rgb_img.resize((target_w, target_h), Image.Resampling.LANCZOS)
             if add_cut_border:
                 p_draw = ImageDraw.Draw(resized)
-                p_draw.rectangle([0, 0, target_w - 1, target_h - 1], outline=(204, 204, 204), width=1)
+                p_draw.rectangle([0, 0, target_w - 1, target_h - 1], outline=(128, 128, 128), width=1)
             
             buffered = io.BytesIO()
             quality = 95
@@ -737,7 +745,7 @@ def export_single_photo():
             resized = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
             if add_cut_border:
                 p_draw = ImageDraw.Draw(resized)
-                p_draw.rectangle([0, 0, target_w - 1, target_h - 1], outline=(204, 204, 204), width=1)
+                p_draw.rectangle([0, 0, target_w - 1, target_h - 1], outline=(128, 128, 128), width=1)
             buffered = io.BytesIO()
             resized.save(buffered, format="PNG", dpi=(dpi, dpi))
             mime = "image/png"

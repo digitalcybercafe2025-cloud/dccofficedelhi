@@ -8,6 +8,9 @@ import SizeModal from './components/modals/SizeModal';
 import ColorAdjustModal from './components/modals/ColorAdjustModal';
 import SettingsModal from './components/modals/SettingsModal';
 import PrintHubWindow from './components/printhub/PrintHubWindow';
+import sample1 from './assets/1000695901.png';
+import sample2 from './assets/1000695908.png';
+import sample3 from './assets/1000695907.png';
 import { INITIAL_CUSTOMERS } from './utils/sampleData';
 import { silentSyncWithSupabase, isMasterAdminId } from './utils/supabase';
 import {
@@ -35,22 +38,26 @@ export default function App() {
   const [showManualLockScreen, setShowManualLockScreen] = useState(false);
 
   const [activeModule, setActiveModule] = useState('PhotoStudio');
-  const [customers, setCustomers] = useState(INITIAL_CUSTOMERS.slice(0, 3));
+  const [customers, setCustomers] = useState([
+    { id: 'c1', code: 'C1', name: 'Photo 1', copies: 6, image: sample1 },
+    { id: 'c2', code: 'C2', name: 'Photo 2', copies: 6, image: sample2 },
+    { id: 'c3', code: 'C3', name: 'Photo 3', copies: 6, image: sample3 }
+  ]);
   const [activeCustomerId, setActiveCustomerId] = useState('c1');
   const [copies, setCopies] = useState(6);
   
-  // Initial print queue matching screenshot (12 photos: 6 of C1, 6 of C4)
+  // Initial print queue matching screenshot (12 photos: 6 of C1, 6 of C2)
   const [printQueue, setPrintQueue] = useState([
     {
       id: 'c1',
       code: 'C1',
-      image: INITIAL_CUSTOMERS[0].image,
+      image: sample1,
       count: 6
     },
     {
-      id: 'c4',
-      code: 'C4',
-      image: INITIAL_CUSTOMERS[3].image,
+      id: 'c2',
+      code: 'C2',
+      image: sample2,
       count: 6
     }
   ]);
