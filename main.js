@@ -254,8 +254,8 @@ ipcMain.on('open-print-window', async (event, printData) => {
   }
 
   printWindow = new BrowserWindow({
-    width: 1000,
-    height: 750,
+    width: 980,
+    height: 680,
     parent: mainWindow,
     modal: false,
     resizable: true,
@@ -316,7 +316,7 @@ function sendNativePrintRequest(payload) {
     const req = http.request({
       hostname: '127.0.0.1',
       port: 5005,
-      path: '/api/native-print',
+      path: '/api/print',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -345,6 +345,37 @@ function sendNativePrintRequest(payload) {
     req.end();
   });
 }
+
+ipcMain.handle('open-printer-preferences', async (event, data = {}) => {
+  const payload = { printer_name: data.printerName || latestPrintData?.activePrinter || null };
+  const postData = JSON.stringify(payload);
+  return new Promise((resolve) => {
+    const req = http.request({
+      hostname: '127.0.0.1',
+      port: 5005,
+      path: '/api/printer-preferences',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      },
+      timeout: 300000 // Allow up to 5 min for user to view/modify preferences
+    }, (res) => {
+      let body = '';
+      res.on('data', chunk => { body += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(body)); }
+        catch (e) { resolve({ success: res.statusCode === 200 }); }
+      });
+    });
+    req.on('error', err => {
+      console.warn('[main] open-printer-preferences error:', err);
+      resolve({ success: false, error: err.message });
+    });
+    req.write(postData);
+    req.end();
+  });
+});
 
 ipcMain.on('execute-direct-print', async (event, data = {}) => {
   let base64Image = data.snapshot || data.base64_image || data.image || latestPrintData?.snapshot;

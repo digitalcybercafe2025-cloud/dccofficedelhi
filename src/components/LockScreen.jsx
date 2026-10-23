@@ -75,6 +75,14 @@ export default function LockScreen({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
+
+  const handleCopyWhatsApp = (e) => {
+    if (e) e.stopPropagation();
+    navigator.clipboard.writeText(WHATSAPP_CLEAN);
+    setCopiedWhatsApp(true);
+    setTimeout(() => setCopiedWhatsApp(false), 2000);
+  };
 
   const machineId = licenseStatus?.machineId || 'FETCHING-HARDWARE-ID...';
   const isBlocked = licenseStatus?.isBlocked;
@@ -201,9 +209,19 @@ export default function LockScreen({
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-        <div className="w-full max-w-5xl bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden flex flex-col gap-6 p-6 sm:p-8">
+      {/* Main Content Area / Modal Backdrop */}
+      <div
+        onClick={(e) => {
+          if (e.target === e.currentTarget && onClose) {
+            onClose();
+          }
+        }}
+        className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center cursor-pointer"
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-5xl bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl backdrop-blur-md overflow-hidden flex flex-col gap-6 p-6 sm:p-8 cursor-default"
+        >
           
           {/* Header Banner */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-5 border-b border-slate-800/80">
@@ -340,7 +358,17 @@ export default function LockScreen({
                       <span>Send Screenshot on WhatsApp</span>
                       <ExternalLink className="w-3 h-3 opacity-80" />
                     </button>
-                    <span className="text-[11px] text-slate-400">{WHATSAPP_DISPLAY}</span>
+                    <div
+                      onClick={handleCopyWhatsApp}
+                      title="Click to copy WhatsApp Number"
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-all cursor-pointer select-all"
+                      style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <span className="text-[11px] font-mono font-medium">{WHATSAPP_DISPLAY}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-200 font-semibold flex items-center gap-1">
+                        {copiedWhatsApp ? '✓ Copied' : '📋 Copy'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

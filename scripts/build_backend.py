@@ -40,6 +40,8 @@ def build_backend():
         if os.path.exists(fallback_cv2):
             cv2_data_dir = fallback_cv2
 
+    models_dir = os.path.join(project_root, 'resources_build', 'backend', 'models')
+
     # 1. Run PyInstaller with STRICT exclusion of PyTorch and heavy bloat
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -68,6 +70,8 @@ def build_backend():
     ]
     if cv2_data_dir and os.path.exists(cv2_data_dir):
         cmd.extend(["--add-data", f"{cv2_data_dir}{os.pathsep}cv2/data"])
+    if os.path.exists(models_dir):
+        cmd.extend(["--add-data", f"{models_dir}{os.pathsep}models"])
     cmd.append(backend_script)
 
     print("\n[Step 1/3] Compiling ultra-fast lightweight Python backend...")

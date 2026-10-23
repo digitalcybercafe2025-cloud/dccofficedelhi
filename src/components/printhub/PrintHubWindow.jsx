@@ -83,18 +83,22 @@ export default function PrintHubWindow() {
     }
   };
 
-  // Handle advanced OS/vendor preferences print
-  const handleAdvancedPrint = () => {
-    if (window.ipcRenderer?.send) {
-      window.ipcRenderer.send('execute-advanced-print', {
-        printerName: selectedPrinter,
-        copies,
-        paperSize,
-        paperType,
-        quality,
-        colorMode,
-        directScale
-      });
+  // Handle opening native OS/vendor printer preferences ONLY (Strictly NO print execution)
+  const handleOpenPreferences = async () => {
+    try {
+      if (window.ipcRenderer?.invoke) {
+        await window.ipcRenderer.invoke('open-printer-preferences', {
+          printerName: selectedPrinter
+        });
+      } else {
+        await fetch('http://127.0.0.1:5005/api/printer-preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ printer_name: selectedPrinter })
+        });
+      }
+    } catch (err) {
+      console.warn('Printer preferences notice:', err);
     }
   };
 
@@ -149,7 +153,10 @@ export default function PrintHubWindow() {
         }
       `}</style>
       {/* LEFT PANEL: PRINT CONTROLS & HARDWARE SETTINGS */}
-      <div className="w-[310px] shrink-0 bg-[#f8fafc] border-r border-slate-200 flex flex-col justify-between p-4 overflow-y-auto no-print">
+      <div 
+        className="w-[310px] shrink-0 bg-[#f8fafc] border-r border-slate-200 flex flex-col justify-between p-4 overflow-y-auto no-print"
+        style={{ maxHeight: '80vh', overflowY: 'auto' }}
+      >
         <div className="space-y-3.5">
           {/* Printer Selection */}
           <div>
@@ -377,9 +384,9 @@ export default function PrintHubWindow() {
             </button>
             <button
               type="button"
-              onClick={handleAdvancedPrint}
+              onClick={handleOpenPreferences}
               className="w-full py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 rounded-lg shadow-2xs transition-colors cursor-pointer text-center"
-              title="Open native Epson OS dialog to force true hardware Glossy paper profile"
+              title="Open native printer driver preferences dialog to configure Glossy Paper & driver settings"
             >
               Preferences...
             </button>

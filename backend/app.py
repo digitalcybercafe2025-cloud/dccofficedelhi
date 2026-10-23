@@ -6,6 +6,8 @@ import base64
 import json
 import subprocess
 import multiprocessing
+import pickle
+import tempfile
 
 # Safe stdout/stderr initialization for Windows --noconsole execution
 class _SafeStream:
@@ -51,21 +53,27 @@ import cv2
 import numpy as np
 
 if getattr(sys, 'frozen', False):
-    APP_ROOT = os.path.dirname(sys.executable)
+    APP_ROOT = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
 else:
     APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 def get_resource_path(subpath):
-    p1 = os.path.join(APP_ROOT, subpath)
-    if os.path.exists(p1):
-        return p1
-    p2 = os.path.join(os.path.dirname(APP_ROOT), subpath)
-    if os.path.exists(p2):
-        return p2
-    p3 = os.path.join(APP_ROOT, 'backend', subpath)
-    if os.path.exists(p3):
-        return p3
-    return p1
+    meipass = getattr(sys, '_MEIPASS', None)
+    candidates = []
+    if meipass:
+        candidates.append(os.path.join(meipass, subpath))
+        candidates.append(os.path.join(meipass, 'backend', subpath))
+    candidates.append(os.path.join(APP_ROOT, subpath))
+    candidates.append(os.path.join(os.path.dirname(APP_ROOT), subpath))
+    candidates.append(os.path.join(APP_ROOT, 'backend', subpath))
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.dirname(sys.executable)
+        candidates.append(os.path.join(exe_dir, subpath))
+        candidates.append(os.path.join(exe_dir, 'models'))
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return candidates[0] if candidates else subpath
 
 def get_cascade_path(cname):
     candidates = []
@@ -2392,11 +2400,118 @@ def get_printers():
         "activePrinter": default_printer
     })
 
+@app.route('/api/printer-preferences', methods=['POST'])
+def open_printer_preferences():
+    """
+    Opens the OS Native Printer Preferences dialog without printing.
+    When user clicks OK, saves the driver's private DEVMODE settings to saved_devmode.dat.
+    """
+    if not (WIN32_PRINT_AVAILABLE and sys.platform == 'win32'):
+        return jsonify({"success": False, "error": "Native printing only available on Windows"}), 400
+    try:
+        data = request.get_json(silent=True) or {}
+        requested_printer = data.get('printer_name') or data.get('printerName')
+
+        enum_flags = win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
+        installed_printers = [p[2] for p in win32print.EnumPrinters(enum_flags)]
+        target_printer = None
+
+        if requested_printer:
+            for p in installed_printers:
+                if p.lower() == requested_printer.lower():
+                    target_printer = p
+                    break
+            if not target_printer:
+                req_clean = requested_printer.lower().replace("series", "").strip()
+                for p in installed_printers:
+                    p_clean = p.lower()
+                    if req_clean in p_clean or p_clean in req_clean:
+                        target_printer = p
+                        break
+
+        if not target_printer:
+            try:
+                target_printer = win32print.GetDefaultPrinter()
+            except Exception:
+                if installed_printers:
+                    target_printer = installed_printers[0]
+
+        if not target_printer:
+            return jsonify({"success": False, "error": "No installed printer found."}), 404
+
+        hPrinter = win32print.OpenPrinter(target_printer)
+        try:
+            pinfo = win32print.GetPrinter(hPrinter, 2)
+            devmode = pinfo.get('pDevMode')
+
+            if devmode is not None:
+                # Pre-apply default photo glossy & portrait orientation
+                devmode.Orientation = win32con.DMORIENT_PORTRAIT
+                devmode.PaperSize = win32con.DMPAPER_A4
+                devmode.Color = win32con.DMCOLOR_COLOR
+                devmode.PrintQuality = win32con.DMRES_HIGH
+                devmode.MediaType = win32con.DMMEDIA_GLOSSY
+                devmode.Fields |= (
+                    win32con.DM_ORIENTATION |
+                    win32con.DM_PAPERSIZE |
+                    win32con.DM_COLOR |
+                    win32con.DM_PRINTQUALITY |
+                    win32con.DM_MEDIATYPE
+                )
+
+            # Open OS Native Preferences dialog ONLY. DO NOT call StartDoc/StartDocPrinter.
+            res = win32print.DocumentProperties(
+                0, hPrinter, target_printer, devmode, devmode,
+                win32con.DM_IN_BUFFER | win32con.DM_PROMPT | win32con.DM_OUT_BUFFER
+            )
+
+            # If user clicked OK (res == 1 / IDOK), save the modified DEVMODE data
+            if res == 1 and devmode is not None:
+                props = {}
+                for attr in [
+                    'Color', 'MediaType', 'Orientation', 'PaperSize', 'PrintQuality',
+                    'Copies', 'DefaultSource', 'Duplex', 'Fields', 'Scale', 'YResolution', 'DriverData'
+                ]:
+                    if hasattr(devmode, attr):
+                        props[attr] = getattr(devmode, attr)
+
+                devmode_path = os.path.join(tempfile.gettempdir(), 'saved_devmode.dat')
+                with open(devmode_path, 'wb') as f:
+                    pickle.dump(props, f)
+
+                # Also save to APP_ROOT
+                try:
+                    with open(os.path.join(APP_ROOT, 'saved_devmode.dat'), 'wb') as f:
+                        pickle.dump(props, f)
+                except Exception:
+                    pass
+
+                print(f"[Printer Preferences] Saved modified DEVMODE for '{target_printer}' to {devmode_path}")
+                return jsonify({
+                    "success": True,
+                    "saved": True,
+                    "printer": target_printer,
+                    "message": f"Preferences saved for {target_printer}"
+                })
+            else:
+                return jsonify({
+                    "success": True,
+                    "saved": False,
+                    "message": "Preferences dialog cancelled"
+                })
+        finally:
+            win32print.ClosePrinter(hPrinter)
+    except Exception as e:
+        print(f"[Printer Preferences Error]: {e}", file=sys.stderr)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/print', methods=['POST'])
+@app.route('/api/print-image', methods=['POST'])
 @app.route('/api/native-print', methods=['POST'])
 def native_print():
     """
     Bypasses Electron's Chromium print limitations entirely via Native Windows Print Spooler.
-    Modifies the printer driver's DEVMODE structure to force Glossy Paper & High Quality in 1 click.
+    Uses saved DEVMODE preferences (Glossy Paper & driver private fields) for silent 1-click execution.
     """
     if not WIN32_PRINT_AVAILABLE:
         return jsonify({
@@ -2469,27 +2584,47 @@ def native_print():
         devmode = pinfo.get('pDevMode')
 
         if devmode is not None:
-            # Force A4 Portrait Canvas
-            devmode.Orientation = win32con.DMORIENT_PORTRAIT
-            devmode.PaperSize = win32con.DMPAPER_A4
+            # Check for user-configured driver private DEVMODE saved from Preferences
+            saved_loaded = False
+            for sp in [os.path.join(tempfile.gettempdir(), 'saved_devmode.dat'), os.path.join(APP_ROOT, 'saved_devmode.dat')]:
+                if os.path.exists(sp):
+                    try:
+                        with open(sp, 'rb') as f:
+                            saved_props = pickle.load(f)
+                        if isinstance(saved_props, dict):
+                            for k, v in saved_props.items():
+                                try:
+                                    setattr(devmode, k, v)
+                                except Exception:
+                                    pass
+                            saved_loaded = True
+                            print(f"[Native Print] Applied saved private DEVMODE from {sp}")
+                            break
+                    except Exception as e_load:
+                        print(f"[Native Print] Saved DEVMODE load notice: {e_load}")
 
-            # Force Color / Grayscale
-            if color_mode in ['grayscale', 'mono', 'monochrome', 'black']:
-                devmode.Color = win32con.DMCOLOR_MONOCHROME
-            else:
-                devmode.Color = win32con.DMCOLOR_COLOR
+            if not saved_loaded:
+                # Force A4 Portrait Canvas
+                devmode.Orientation = win32con.DMORIENT_PORTRAIT
+                devmode.PaperSize = win32con.DMPAPER_A4
 
-            # Force Print Quality: High (DMRES_HIGH signals driver to apply maximum DPI / fine detailing)
-            devmode.PrintQuality = win32con.DMRES_HIGH
+                # Force Color / Grayscale
+                if color_mode in ['grayscale', 'mono', 'monochrome', 'black']:
+                    devmode.Color = win32con.DMCOLOR_MONOCHROME
+                else:
+                    devmode.Color = win32con.DMCOLOR_COLOR
 
-            # Force Media Type: Glossy Paper
-            paper_lower = paper_type.lower()
-            if any(k in paper_lower for k in ['glossy', 'photo', 'ultra', 'premium']):
-                devmode.MediaType = win32con.DMMEDIA_GLOSSY  # Standard Windows DMMEDIA_GLOSSY = 3
-            elif 'transparency' in paper_lower:
-                devmode.MediaType = win32con.DMMEDIA_TRANSPARENCY
-            else:
-                devmode.MediaType = win32con.DMMEDIA_STANDARD
+                # Force Print Quality: High (DMRES_HIGH signals driver to apply maximum DPI / fine detailing)
+                devmode.PrintQuality = win32con.DMRES_HIGH
+
+                # Force Media Type: Glossy Paper
+                paper_lower = paper_type.lower()
+                if any(k in paper_lower for k in ['glossy', 'photo', 'ultra', 'premium']):
+                    devmode.MediaType = win32con.DMMEDIA_GLOSSY  # Standard Windows DMMEDIA_GLOSSY = 3
+                elif 'transparency' in paper_lower:
+                    devmode.MediaType = win32con.DMMEDIA_TRANSPARENCY
+                else:
+                    devmode.MediaType = win32con.DMMEDIA_STANDARD
 
             if copies > 1:
                 devmode.Copies = copies
