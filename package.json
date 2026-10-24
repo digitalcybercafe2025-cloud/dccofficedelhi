@@ -72,8 +72,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "pawanji-del",
-        "repo": "dcc-desktop-app"
+        "owner": "digitalcybercafe2025-cloud",
+        "repo": "dccofficedelhi"
       }
     ],
     "asar": true,

@@ -67,7 +67,7 @@ export default function SettingsModal({
   };
 
   const handleManualDownloadExe = () => {
-    const url = 'https://github.com/pawanji-del/dcc-desktop-app/releases/latest';
+    const url = 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest';
     if (window.electronAPI?.openExternal) {
       window.electronAPI.openExternal(url);
     } else {

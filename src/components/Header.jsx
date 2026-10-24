@@ -40,8 +40,8 @@ export default function Header({
   const [updateInfo, setUpdateInfo] = useState({
     currentVersion: 'v2.0.3',
     latestVersion: null,
-    downloadUrl: 'https://github.com/pawanji-del/dcc-desktop-app/releases/latest',
-    releaseUrl: 'https://github.com/pawanji-del/dcc-desktop-app/releases/latest',
+    downloadUrl: 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest',
+    releaseUrl: 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest',
     hasUpdate: false
   });
 
@@ -87,12 +87,12 @@ export default function Header({
     setIsCheckingUpdates(true);
     setOtaStatus('Connecting to GitHub Releases API...');
     try {
-      const res = await fetch('https://api.github.com/repos/pawanji-del/dcc-desktop-app/releases/latest');
+      const res = await fetch('https://api.github.com/repos/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest');
       if (res.ok) {
         const data = await res.json();
         const tag = data.tag_name || data.name || 'v2.0.3';
         const exeAsset = data.assets?.find((a) => a.name?.endsWith('.exe'));
-        const dlUrl = exeAsset?.browser_download_url || data.html_url || 'https://github.com/pawanji-del/dcc-desktop-app/releases/latest';
+        const dlUrl = exeAsset?.browser_download_url || data.html_url || 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest';
         const cleanTag = tag.replace(/^v/, '');
         const cleanCurrent = '2.0.3';
         const hasUpdate = cleanTag !== cleanCurrent && cleanTag > cleanCurrent;
@@ -101,7 +101,7 @@ export default function Header({
           currentVersion: 'v2.0.3',
           latestVersion: tag.startsWith('v') ? tag : `v${tag}`,
           downloadUrl: dlUrl,
-          releaseUrl: data.html_url || 'https://github.com/pawanji-del/dcc-desktop-app/releases/latest',
+          releaseUrl: data.html_url || 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest',
           hasUpdate
         });
         setOtaStatus(hasUpdate ? `New update (${tag}) available!` : 'You are on the latest version (v2.0.3)');
@@ -137,7 +137,7 @@ export default function Header({
   };
 
   const handleManualDownloadExe = () => {
-    const targetUrl = updateInfo.downloadUrl || 'https://github.com/pawanji-del/dcc-desktop-app/releases/latest';
+    const targetUrl = updateInfo.downloadUrl || 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest';
     if (window.electronAPI?.openExternal) {
       window.electronAPI.openExternal(targetUrl);
     } else {
@@ -350,7 +350,7 @@ export default function Header({
                 </div>
 
                 <div className="pt-2 mt-2 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
-                  <span>Repo: pawanji-del/dcc-desktop-app</span>
+                  <span>Repo: digitalcybercafe2025-cloud/dccofficedelhi</span>
                   <span className="text-emerald-600 font-semibold">GitHub Official</span>
                 </div>
               </div>
