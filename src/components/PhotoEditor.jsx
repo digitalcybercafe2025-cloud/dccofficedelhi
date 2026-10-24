@@ -15,7 +15,9 @@ import {
   Sparkles,
   Link2,
   Download,
-  Check
+  Check,
+  Type,
+  X
 } from 'lucide-react';
 import { exportSinglePhoto } from '../utils/api';
 
@@ -28,7 +30,10 @@ const PhotoEditor = forwardRef(function PhotoEditor({
   onUndo,
   onRedo,
   canUndo,
-  canRedo
+  canRedo,
+  adjustments = { brightness: 100, contrast: 100, saturation: 100, beauty: false },
+  nameDobBox = { enabled: false, name: '', dob: '' },
+  onChangeNameDobBox
 }, ref) {
   // Photo layer state (comfortable default zoom to prevent clipping)
   const [zoom, setZoom] = useState(0.85);
@@ -109,7 +114,50 @@ const PhotoEditor = forwardRef(function PhotoEditor({
     const drawW = dispW * zoom * scaleFactor;
     const drawH = dispH * zoom * scaleFactor;
 
+    // Apply brightness, contrast, saturation & beauty filters
+    const b = adjustments?.brightness ?? 100;
+    const c = adjustments?.contrast ?? 100;
+    const s = adjustments?.saturation ?? 100;
+    const beautyBoost = adjustments?.beauty ? ' contrast(108%) brightness(105%) saturate(106%)' : '';
+    ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)${beautyBoost}`;
+
     ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+
+    // Reset filter
+    ctx.filter = 'none';
+
+    // If Name & DOB white bounding box is enabled, burn it onto the bottom of the photo
+    if (nameDobBox?.enabled && (nameDobBox.name || nameDobBox.dob)) {
+      // Reset translation back to top-left of canvas
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+      const boxHeight = Math.max(Math.round(outH * 0.16), 46);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, outH - boxHeight, outW, boxHeight);
+
+      // Top separator line
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = Math.max(2, Math.round(outW * 0.005));
+      ctx.beginPath();
+      ctx.moveTo(0, outH - boxHeight);
+      ctx.lineTo(outW, outH - boxHeight);
+      ctx.stroke();
+
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const fontSize = Math.max(12, Math.round(boxHeight * 0.28));
+      ctx.font = `bold ${fontSize}px sans-serif`;
+
+      if (nameDobBox.name && nameDobBox.dob) {
+        ctx.fillText(nameDobBox.name.toUpperCase(), outW / 2, outH - boxHeight + (boxHeight * 0.32));
+        ctx.fillText(`DOB: ${nameDobBox.dob}`, outW / 2, outH - boxHeight + (boxHeight * 0.72));
+      } else if (nameDobBox.name) {
+        ctx.fillText(nameDobBox.name.toUpperCase(), outW / 2, outH - (boxHeight / 2));
+      } else if (nameDobBox.dob) {
+        ctx.fillText(`DOB: ${nameDobBox.dob}`, outW / 2, outH - (boxHeight / 2));
+      }
+    }
 
     return canvas.toDataURL('image/png');
   };
@@ -560,7 +608,10 @@ const PhotoEditor = forwardRef(function PhotoEditor({
               ref={imgRef}
               src={activeCustomer.image}
               alt="Active customer"
-              className="max-h-[330px] max-w-full object-contain drop-shadow-md select-none pointer-events-none"
+              className="max-h-[310px] max-w-full object-contain drop-shadow-md select-none pointer-events-none transition-[filter]"
+              style={{
+                filter: `brightness(${adjustments?.brightness ?? 100}%) contrast(${adjustments?.contrast ?? 100}%) saturate(${adjustments?.saturation ?? 100}%)${adjustments?.beauty ? ' contrast(108%) brightness(105%) saturate(106%)' : ''}`
+              }}
               draggable={false}
             />
           </div>
@@ -710,16 +761,63 @@ const PhotoEditor = forwardRef(function PhotoEditor({
                   CHIN
                 </text>
               </svg>
+
+              {/* Feature: Add Text White Bounding Box at bottom for Name & DOB */}
+              {nameDobBox?.enabled && (
+                <div
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="absolute bottom-0 inset-x-0 bg-white/95 border-t-2 border-slate-500 p-1.5 shadow-lg flex flex-col gap-1 z-30 pointer-events-auto rounded-b-xs"
+                >
+                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-700 px-0.5">
+                    <span className="flex items-center gap-1 text-blue-600">
+                      <Type className="w-3 h-3" />
+                      Bottom Text Strip (Name / DOB)
+                    </span>
+                    {onChangeNameDobBox && (
+                      <button
+                        type="button"
+                        onClick={() => onChangeNameDobBox({ ...nameDobBox, enabled: false })}
+                        className="text-slate-400 hover:text-rose-600 font-bold p-0.5 rounded cursor-pointer"
+                        title="Remove text box"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="flex items-center gap-1 bg-slate-50 border border-slate-300 rounded px-1.5 py-0.5">
+                      <span className="text-[10px] font-bold text-slate-500">Name:</span>
+                      <input
+                        type="text"
+                        value={nameDobBox.name || ''}
+                        onChange={(e) => onChangeNameDobBox && onChangeNameDobBox({ ...nameDobBox, name: e.target.value })}
+                        placeholder="NAME"
+                        className="w-full bg-transparent text-[11px] font-bold text-slate-800 uppercase focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 bg-slate-50 border border-slate-300 rounded px-1.5 py-0.5">
+                      <span className="text-[10px] font-bold text-slate-500">DOB:</span>
+                      <input
+                        type="text"
+                        value={nameDobBox.dob || ''}
+                        onChange={(e) => onChangeNameDobBox && onChangeNameDobBox({ ...nameDobBox, dob: e.target.value })}
+                        placeholder="DD/MM/YYYY"
+                        className="w-full bg-transparent text-[11px] font-bold text-slate-800 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
 
       {/* Top Single Photo Export Settings (W, H, Unit, DPI, Size KB, Format) */}
-      <div className="mt-2 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 flex items-center justify-between gap-1 shadow-2xs text-[10.5px]">
-        {/* Dimensions: W, Lock, H, Unit (px/cm/mm) */}
-        <div className="flex items-center gap-1 font-semibold text-slate-700 flex-shrink-0">
-          <span className="text-slate-400 font-bold text-[10px]">W:</span>
+      <div className="mt-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center justify-between gap-1 shadow-2xs text-[11px]">
+        {/* Dimensions: W, Lock, H, Unit (px/cm/mm) - Widened W & H boxes */}
+        <div className="flex items-center gap-1.5 font-semibold text-slate-700 flex-shrink-0">
+          <span className="text-slate-500 font-bold text-[10.5px]">W:</span>
           <input
             type="number"
             step={singleUnit === 'px' ? '1' : '0.1'}
@@ -727,7 +825,7 @@ const PhotoEditor = forwardRef(function PhotoEditor({
             onChange={handleWidthChange}
             title={`Width in ${singleUnit}`}
             placeholder={singleUnit === 'px' ? '350' : singleUnit === 'cm' ? '3.5' : '35'}
-            className="w-9 bg-white border border-slate-300 rounded px-0.5 py-0.5 text-center text-slate-800 font-bold text-[10.5px] focus:border-blue-500 focus:outline-none"
+            className="w-14 bg-white border border-slate-300 rounded px-1 py-0.5 text-center text-slate-800 font-bold text-[11px] focus:border-blue-500 focus:outline-none shadow-2xs"
           />
           <button
             onClick={() => setIsRatioLocked(!isRatioLocked)}
@@ -738,9 +836,9 @@ const PhotoEditor = forwardRef(function PhotoEditor({
                 : 'text-slate-400 hover:text-slate-700'
             }`}
           >
-            <Link2 className="w-3 h-3" />
+            <Link2 className="w-3.5 h-3.5" />
           </button>
-          <span className="text-slate-400 font-bold text-[10px]">H:</span>
+          <span className="text-slate-500 font-bold text-[10.5px]">H:</span>
           <input
             type="number"
             step={singleUnit === 'px' ? '1' : '0.1'}
@@ -748,13 +846,13 @@ const PhotoEditor = forwardRef(function PhotoEditor({
             onChange={handleHeightChange}
             title={`Height in ${singleUnit}`}
             placeholder={singleUnit === 'px' ? '450' : singleUnit === 'cm' ? '4.5' : '45'}
-            className="w-9 bg-white border border-slate-300 rounded px-0.5 py-0.5 text-center text-slate-800 font-bold text-[10.5px] focus:border-blue-500 focus:outline-none"
+            className="w-14 bg-white border border-slate-300 rounded px-1 py-0.5 text-center text-slate-800 font-bold text-[11px] focus:border-blue-500 focus:outline-none shadow-2xs"
           />
           <select
             value={singleUnit}
             onChange={(e) => handleUnitChange(e.target.value)}
             title="Measurement Unit (px, cm, mm)"
-            className="bg-white border border-slate-300 rounded px-1 py-0.5 text-[10.5px] font-bold text-slate-700 focus:border-blue-500 focus:outline-none cursor-pointer"
+            className="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-[11px] font-bold text-slate-700 focus:border-blue-500 focus:outline-none cursor-pointer shadow-2xs"
           >
             <option value="px">px</option>
             <option value="cm">cm</option>

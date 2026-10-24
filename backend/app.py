@@ -92,9 +92,21 @@ def get_cascade_path(cname):
     return candidates[0] if candidates else cname
 
 # Configure offline model cache for rembg (IS-Net / U2Net ONNX Engine) before rembg import
-local_models = get_resource_path('models')
-if os.path.exists(local_models):
-    os.environ['U2NET_HOME'] = local_models
+# Priority: sys._MEIPASS / models for zero-dependency offline packaged execution
+models_search_dirs = []
+meipass = getattr(sys, '_MEIPASS', None)
+if meipass:
+    models_search_dirs.append(os.path.join(meipass, 'models'))
+    models_search_dirs.append(os.path.join(meipass, 'backend', 'models'))
+models_search_dirs.append(get_resource_path('models'))
+models_search_dirs.append(os.path.join(APP_ROOT, 'models'))
+models_search_dirs.append(os.path.join(os.path.dirname(APP_ROOT), 'resources_build', 'backend', 'models'))
+
+for md in models_search_dirs:
+    if os.path.exists(md):
+        os.environ['U2NET_HOME'] = md
+        print(f"[Rembg Init] Offline model directory bound to U2NET_HOME: {md}")
+        break
 
 REMBG_INIT_ERROR = None
 
@@ -381,8 +393,12 @@ def enhance_cropped_face(face_bgr, weight=0.60):
         orig_w = 1.0 - ai_w
         blended_face = cv2.addWeighted(sharp_ai, ai_w, smoothed_original, orig_w, 0)
 
+        # Step 5b: Fast Unsharp Mask for HD crispness (zero size increase - uses existing OpenCV)
+        usm_blur = cv2.GaussianBlur(blended_face, (0, 0), 2.0)
+        crisp_face = cv2.addWeighted(blended_face, 1.5, usm_blur, -0.5, 0)
+
         # Step 6: Professional Studio Print Polish
-        studio_face = cv2.convertScaleAbs(blended_face, alpha=1.02, beta=1)
+        studio_face = cv2.convertScaleAbs(crisp_face, alpha=1.02, beta=1)
         return studio_face
     except Exception as e:
         print(f"Face enhancement fallback: {e}", file=sys.stderr)
@@ -484,7 +500,11 @@ def enhance_photo():
             # Fallback if no face could be isolated
             result_bgr = enhance_cropped_face(bgr_img, weight=weight)
 
-        # Step D: Studio Print Polish (Subtle brightness & contrast calibration)
+        # Step D: Artificial crispness boost via fast OpenCV Unsharp Mask (Zero ML model size increase)
+        gaussian_blur = cv2.GaussianBlur(result_bgr, (0, 0), 2.0)
+        result_bgr = cv2.addWeighted(result_bgr, 1.5, gaussian_blur, -0.5, 0)
+
+        # Step E: Studio Print Polish (Subtle brightness & contrast calibration)
         result_bgr = cv2.convertScaleAbs(result_bgr, alpha=1.02, beta=2)
 
         restored_rgb = cv2.cvtColor(result_bgr, cv2.COLOR_BGR2RGB)
@@ -2564,6 +2584,37 @@ def native_print():
     if not target_printer:
         return jsonify({"success": False, "error": "No installed Windows printer detected."}), 404
 
+    # Check if raw spool payload is provided for direct Adobe-style WritePrinter spooling
+    raw_spool_data = data.get('raw_data') or data.get('raw_bytes') or data.get('raw_spool')
+    if raw_spool_data:
+        hPrinter = None
+        try:
+            hPrinter = win32print.OpenPrinter(target_printer)
+            job_name = f"Digital Cyber Cafe - {paper_type} Print"
+            job_id = win32print.StartDocPrinter(hPrinter, 1, (job_name, None, "RAW"))
+            win32print.StartPagePrinter(hPrinter)
+            if isinstance(raw_spool_data, str):
+                raw_bytes = base64.b64decode(raw_spool_data.split(',', 1)[1] if ',' in raw_spool_data else raw_spool_data)
+            else:
+                raw_bytes = bytes(raw_spool_data)
+            win32print.WritePrinter(hPrinter, raw_bytes)
+            win32print.EndPagePrinter(hPrinter)
+            win32print.EndDocPrinter(hPrinter)
+            print(f"[Adobe Silent Spool] Wrote {len(raw_bytes)} raw bytes directly to {target_printer} (Job ID: {job_id})")
+            return jsonify({
+                "success": True,
+                "message": f"Successfully spooled to '{target_printer}' via direct WritePrinter",
+                "printer": target_printer,
+                "jobId": job_id
+            })
+        except Exception as e_raw:
+            print(f"[Direct Spool Error]: {e_raw}", file=sys.stderr)
+            return jsonify({"success": False, "error": f"Direct spool error: {e_raw}"}), 500
+        finally:
+            if hPrinter:
+                try: win32print.ClosePrinter(hPrinter)
+                except Exception: pass
+
     # 2. Decode Base64 Image
     try:
         if ',' in base64_image:
@@ -2575,7 +2626,8 @@ def native_print():
     except Exception as img_err:
         return jsonify({"success": False, "error": f"Failed to decode image data: {img_err}"}), 400
 
-    # 3. Access & Modify Printer DEVMODE Structure (Glossy Paper & High Quality)
+    # 3. Access & Modify Printer DEVMODE Structure Programmatically (Zero Popups)
+    # Completely bypasses win32print.DocumentProperties UI to eliminate driver dialogs
     hPrinter = None
     devmode = None
     try:
@@ -2614,13 +2666,13 @@ def native_print():
                 else:
                     devmode.Color = win32con.DMCOLOR_COLOR
 
-                # Force Print Quality: High (DMRES_HIGH signals driver to apply maximum DPI / fine detailing)
+                # Force Print Quality: High (DMRES_HIGH signals driver to apply maximum DPI)
                 devmode.PrintQuality = win32con.DMRES_HIGH
 
                 # Force Media Type: Glossy Paper
                 paper_lower = paper_type.lower()
                 if any(k in paper_lower for k in ['glossy', 'photo', 'ultra', 'premium']):
-                    devmode.MediaType = win32con.DMMEDIA_GLOSSY  # Standard Windows DMMEDIA_GLOSSY = 3
+                    devmode.MediaType = win32con.DMMEDIA_GLOSSY
                 elif 'transparency' in paper_lower:
                     devmode.MediaType = win32con.DMMEDIA_TRANSPARENCY
                 else:
@@ -2638,14 +2690,11 @@ def native_print():
                 win32con.DM_MEDIATYPE
             )
 
-            # Reconcile driver private DEVMODE fields (e.g. Epson driver private media types)
+            pinfo['pDevMode'] = devmode
             try:
-                win32print.DocumentProperties(
-                    0, hPrinter, target_printer, devmode, devmode,
-                    win32con.DM_IN_BUFFER | win32con.DM_OUT_BUFFER
-                )
-            except Exception as e_dp:
-                print(f"[Native Print] DocumentProperties driver notice: {e_dp}")
+                win32print.SetPrinter(hPrinter, 2, pinfo, 0)
+            except Exception:
+                pass
     except Exception as e_dm:
         print(f"[Native Print] DEVMODE configuration warning: {e_dm}", file=sys.stderr)
     finally:

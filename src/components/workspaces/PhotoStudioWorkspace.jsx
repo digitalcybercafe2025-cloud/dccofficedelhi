@@ -46,6 +46,28 @@ export default function PhotoStudioWorkspace({
 }) {
   const photoEditorRef = React.useRef(null);
 
+  // Photo studio local adjustments (Brightness, Contrast, Saturation & Beauty)
+  const [adjustments, setAdjustments] = React.useState({
+    brightness: 100,
+    contrast: 100,
+    saturation: 100,
+    beauty: false
+  });
+
+  // Name and DOB bottom bounding box state
+  const [nameDobBox, setNameDobBox] = React.useState({
+    enabled: false,
+    name: '',
+    dob: ''
+  });
+
+  const handleToggleAddText = () => {
+    setNameDobBox((prev) => ({
+      ...prev,
+      enabled: !prev.enabled
+    }));
+  };
+
   const handleAddToPrintPreviewWithCrop = () => {
     if (photoEditorRef.current?.getCroppedPhoto) {
       const cropped = photoEditorRef.current.getCroppedPhoto();
@@ -105,10 +127,10 @@ export default function PhotoStudioWorkspace({
           onAddToPrintPreview={handleAddToPrintPreviewWithCrop}
           onOpenSizeModal={onOpenSizeModal}
           onOpenColorModal={onOpenColorModal}
-          onOpenSpacingModal={onOpenSizeModal}
-          onToggleGuide={() => {}}
-          activeTool={activeTool}
-          setActiveTool={setActiveTool}
+          onToggleAddText={handleToggleAddText}
+          isAddTextActive={nameDobBox.enabled}
+          adjustments={adjustments}
+          onChangeAdjustments={setAdjustments}
         />
       </div>
 
@@ -125,6 +147,10 @@ export default function PhotoStudioWorkspace({
           onRedo={onRedo}
           canUndo={canUndo}
           canRedo={canRedo}
+          adjustments={adjustments}
+          onChangeAdjustments={setAdjustments}
+          nameDobBox={nameDobBox}
+          onChangeNameDobBox={setNameDobBox}
         />
       </div>
 

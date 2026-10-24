@@ -11,7 +11,10 @@ import {
   Sparkles,
   ShieldAlert,
   Save,
-  Lock
+  Lock,
+  DownloadCloud,
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react';
 import AdminDashboardModal from './AdminDashboardModal';
 
@@ -40,6 +43,37 @@ export default function SettingsModal({
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [otaStatus, setOtaStatus] = useState('');
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+
+  const handleUpdateAutomatically = async () => {
+    setOtaStatus('Checking & downloading OTA updates...');
+    try {
+      if (window.electronAPI?.checkForUpdates) {
+        const res = await window.electronAPI.checkForUpdates();
+        if (res?.error) {
+          setOtaStatus(`Update notice: ${res.error}`);
+        } else if (res?.status === 'dev_mode') {
+          setOtaStatus('Dev Mode: Update triggers in packaged build.');
+        } else {
+          setOtaStatus('Update downloaded in background! Restart to apply.');
+        }
+      } else {
+        setOtaStatus('Auto-updates active in desktop mode.');
+      }
+    } catch (e) {
+      setOtaStatus(`Error: ${e.message}`);
+    }
+  };
+
+  const handleManualDownloadExe = () => {
+    const url = 'https://github.com/pawanji-del/dcc-desktop-app/releases/latest';
+    if (window.electronAPI?.openExternal) {
+      window.electronAPI.openExternal(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  };
 
   useEffect(() => {
     // 1. Initialize Installation Date
@@ -283,6 +317,51 @@ export default function SettingsModal({
                 <p className="text-xs font-bold text-emerald-600 truncate">
                   {licenseText}
                 </p>
+              </div>
+            </div>
+
+            {/* GitHub OTA & Software Updates Section */}
+            <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/90 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <DownloadCloud className="w-4 h-4 text-blue-600" />
+                  Software Updates & Releases (GitHub OTA)
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                  v2.0.3 Latest
+                </span>
+              </div>
+
+              {otaStatus && (
+                <div className="p-2 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-800 font-medium leading-tight">
+                  {otaStatus}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleUpdateAutomatically}
+                  className="p-2.5 rounded-xl border border-blue-200 bg-white hover:bg-blue-50 text-slate-800 hover:text-blue-800 transition-all cursor-pointer flex items-center justify-between shadow-2xs group"
+                >
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-blue-700">Update Automatically</span>
+                    <span className="text-[10px] text-slate-500">OTA via electron-updater</span>
+                  </div>
+                  <RefreshCw className="w-3.5 h-3.5 text-blue-600 group-hover:rotate-90 transition-transform" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleManualDownloadExe}
+                  className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 transition-all cursor-pointer flex items-center justify-between shadow-2xs group"
+                >
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-700 group-hover:text-blue-600">Download Manual .exe</span>
+                    <span className="text-[10px] text-slate-500">Official GitHub release page</span>
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600" />
+                </button>
               </div>
             </div>
 

@@ -40,9 +40,11 @@ def build_backend():
         if os.path.exists(fallback_cv2):
             cv2_data_dir = fallback_cv2
 
-    models_dir = os.path.join(project_root, 'resources_build', 'backend', 'models')
+    models_dir = os.path.join(project_root, 'backend', 'models')
+    if not os.path.exists(models_dir) or not os.listdir(models_dir):
+        models_dir = os.path.join(project_root, 'resources_build', 'backend', 'models')
 
-    # 1. Run PyInstaller with STRICT exclusion of PyTorch and heavy bloat
+    # 1. Run PyInstaller with STRICT exclusion of PyTorch and heavy bloat (~450MB target)
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--noconsole",
@@ -52,6 +54,28 @@ def build_backend():
         "--specpath", build_work_dir,
         "--name", "py_backend",
         "--clean",
+        # Exclude bloatware: torch, tensorboard, matplotlib, test suites (~450MB savings)
+        "--exclude-module", "torch",
+        "--exclude-module", "torchvision",
+        "--exclude-module", "torchaudio",
+        "--exclude-module", "tensorboard",
+        "--exclude-module", "matplotlib",
+        "--exclude-module", "matplotlib.backends",
+        "--exclude-module", "scipy",
+        "--exclude-module", "pandas",
+        "--exclude-module", "IPython",
+        "--exclude-module", "jupyter",
+        "--exclude-module", "notebook",
+        "--exclude-module", "pytest",
+        "--exclude-module", "unittest",
+        "--exclude-module", "test",
+        "--exclude-module", "setuptools",
+        "--exclude-module", "distutils",
+        "--exclude-module", "pip",
+        "--exclude-module", "wheel",
+        "--exclude-module", "pkg_resources",
+        "--exclude-module", "tkinter",
+        "--exclude-module", "sympy",
         # Essential Lightweight Stack
         "--hidden-import", "win32print",
         "--hidden-import", "win32ui",

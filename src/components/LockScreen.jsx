@@ -59,8 +59,8 @@ const SUBSCRIPTION_PLANS = [
 ];
 
 const MERCHANT_UPI_ID = 'Q152175398@ybl';
-const WHATSAPP_DISPLAY = '+91 87663 24178';
-const WHATSAPP_CLEAN = '918766324178';
+const WHATSAPP_DISPLAY = '+91 99114 23881';
+const WHATSAPP_CLEAN = '919911423881';
 
 export default function LockScreen({
   licenseStatus,
@@ -348,27 +348,29 @@ export default function LockScreen({
                     Scan using <strong>PhonePe, Google Pay, Paytm, or BHIM</strong> to complete payment. Merchant UPI ID: <code className="bg-slate-800 px-1.5 py-0.5 rounded text-[11px] font-mono text-amber-300">{MERCHANT_UPI_ID}</code>
                   </p>
 
-                  <div className="pt-1 flex flex-col sm:flex-row items-center gap-2">
+                  <div className="pt-2 flex flex-col items-center sm:items-start gap-2">
+                    {/* WhatsApp Number directly ABOVE the green button */}
+                    <div
+                      onClick={handleCopyWhatsApp}
+                      title="Click to copy WhatsApp Number"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-all cursor-pointer select-all"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-xs font-mono font-bold text-emerald-400 tracking-wide">{WHATSAPP_DISPLAY}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-200 font-semibold flex items-center gap-1">
+                        {copiedWhatsApp ? '✓ Copied' : '📋 Copy'}
+                      </span>
+                    </div>
+
                     <button
                       type="button"
                       onClick={handleOpenWhatsApp}
-                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 transition-all cursor-pointer whitespace-nowrap"
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 transition-all cursor-pointer whitespace-nowrap"
                     >
                       <MessageCircle className="w-4 h-4" />
                       <span>Send Screenshot on WhatsApp</span>
                       <ExternalLink className="w-3 h-3 opacity-80" />
                     </button>
-                    <div
-                      onClick={handleCopyWhatsApp}
-                      title="Click to copy WhatsApp Number"
-                      className="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-all cursor-pointer select-all"
-                      style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <span className="text-[11px] font-mono font-medium">{WHATSAPP_DISPLAY}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-200 font-semibold flex items-center gap-1">
-                        {copiedWhatsApp ? '✓ Copied' : '📋 Copy'}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -376,16 +378,16 @@ export default function LockScreen({
             </div>
 
             {/* Right 5 Columns: Machine ID + Offline Key Verification */}
-            <div className="lg:col-span-5 flex flex-col justify-between gap-4 bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 sm:p-5">
+            <div className="lg:col-span-5 flex flex-col justify-between gap-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 sm:p-5">
               
-              <div className="space-y-4">
+              <div className="space-y-3 -mt-1">
                 <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-indigo-400" />
                   2. Your Machine ID
                 </span>
 
                 {/* Machine ID Display */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-1.5 shadow-sm">
                   <div className="flex items-center justify-between text-[11px] text-slate-400">
                     <span>Hardware Bound ID:</span>
                     <span className="text-[10px] text-slate-400 font-normal">(Provide to Admin)</span>

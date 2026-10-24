@@ -513,6 +513,17 @@ ipcMain.handle('open-path', async (event, filePath) => {
   }
 });
 
+ipcMain.handle('open-external', async (event, url) => {
+  try {
+    if (url) {
+      await shell.openExternal(url);
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // Hardware-Bound Licensing & 21-Day Trial IPC Handlers
 ipcMain.handle('get-license-status', async () => {
   return await licenseManager.getStatus();
