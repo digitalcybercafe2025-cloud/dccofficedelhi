@@ -239,12 +239,15 @@ export default function ManualCropModal({
       const cropPixelW = (cropBox.width / 100) * natW;
       const cropPixelH = (cropBox.height / 100) * natH;
 
-      canvas.width = Math.round(cropPixelW);
-      canvas.height = Math.round(cropPixelH);
+      // 300 DPI High-Resolution Canvas Scaling (3x)
+      const scaleFactor = 3;
+      canvas.width = Math.round(cropPixelW * scaleFactor);
+      canvas.height = Math.round(cropPixelH * scaleFactor);
 
       const ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
+      ctx.scale(scaleFactor, scaleFactor);
 
       ctx.drawImage(
         img,
@@ -254,8 +257,8 @@ export default function ManualCropModal({
         cropPixelH,
         0,
         0,
-        canvas.width,
-        canvas.height
+        cropPixelW,
+        cropPixelH
       );
 
       const croppedDataUrl = canvas.toDataURL('image/png');

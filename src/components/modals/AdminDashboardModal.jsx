@@ -95,6 +95,13 @@ export default function AdminDashboardModal({ isOpen, onClose, currentMachineId 
 
   if (!isOpen) return null;
 
+  // Strict Security Lock: Only e08fe0d4-fddc-4ede-9c15-460ccabb22c4 has Master Admin rights
+  const cleanCurrentMid = String(currentMachineId || '').trim().toLowerCase();
+  const isMaster =
+    cleanCurrentMid === 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4' ||
+    (!window.electronAPI && (cleanCurrentMid === 'browser-dev-mode' || !cleanCurrentMid));
+  if (!isMaster) return null;
+
   // Handle plan dropdown selection for a row
   const handleRowPlanChange = (mid, planCode) => {
     setSelectedRowPlans((prev) => ({ ...prev, [mid]: planCode }));
@@ -551,7 +558,7 @@ export default function AdminDashboardModal({ isOpen, onClose, currentMachineId 
                     type="text"
                     value={keygenMid}
                     onChange={(e) => setKeygenMid(e.target.value)}
-                    placeholder="Enter customer machine ID (e.g. 0da4524e-dcec-44fb-9459-8ebfb80e8725)"
+                    placeholder="Enter customer machine ID (e.g. 4b89f10a-7c32-4d51-9ef2-12a456789abc)"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
                   />
                 </div>

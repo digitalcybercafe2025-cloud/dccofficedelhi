@@ -9,14 +9,13 @@ const os = require('os');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://yjcexuoriwevasjixwkh.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
-const MASTER_MACHINE_IDS = [
-  (process.env.MASTER_MACHINE_ID || 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4').trim().toLowerCase(),
-  '0da4524e-dcec-44fb-9459-8ebfb80e8725'
-];
+const MASTER_MACHINE_ID = 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4';
+const MASTER_MACHINE_IDS = [MASTER_MACHINE_ID];
 
 function isMasterAdminId(mid) {
   if (!mid) return false;
-  return MASTER_MACHINE_IDS.includes(String(mid).trim().toLowerCase());
+  const clean = String(mid).trim().toLowerCase();
+  return clean === 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4';
 }
 
 try {
@@ -356,6 +355,7 @@ function generateOfflineKey(targetMachineId, planCode = '12M') {
 }
 
 module.exports = {
+  MASTER_MACHINE_ID,
   MASTER_MACHINE_IDS,
   isMasterAdminId,
   validateLicenseWithServer,

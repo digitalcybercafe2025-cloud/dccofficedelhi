@@ -427,10 +427,14 @@ export default function PerspectiveCropModal({
         const cropW = Math.max(100, maxX - minX);
         const cropH = Math.max(100, maxY - minY);
 
+        const scaleFactor = 3;
         const canvas = document.createElement('canvas');
-        canvas.width = cropW;
-        canvas.height = cropH;
+        canvas.width = Math.round(cropW * scaleFactor);
+        canvas.height = Math.round(cropH * scaleFactor);
         const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.scale(scaleFactor, scaleFactor);
         ctx.drawImage(img, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
         resolve(canvas.toDataURL('image/png'));
       };

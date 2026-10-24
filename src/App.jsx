@@ -7,6 +7,7 @@ import IDCardStudioWorkspace from './components/workspaces/IDCardStudioWorkspace
 import SizeModal from './components/modals/SizeModal';
 import ColorAdjustModal from './components/modals/ColorAdjustModal';
 import SettingsModal from './components/modals/SettingsModal';
+import AdminDashboardModal from './components/modals/AdminDashboardModal';
 import PrintHubWindow from './components/printhub/PrintHubWindow';
 import sample1 from './assets/1000695901.png';
 import sample2 from './assets/1000695908.png';
@@ -80,6 +81,7 @@ export default function App() {
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [colorModalOpen, setColorModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [adminDashboardOpen, setAdminDashboardOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState({ id: 'in_passport', name: 'Indian Passport', widthMm: 35, heightMm: 45 });
   const [activeTool, setActiveTool] = useState(null);
 
@@ -136,17 +138,19 @@ export default function App() {
 
       if (window.electronAPI?.getMachineId) {
         mid = await window.electronAPI.getMachineId();
+      } else {
+        mid = 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4';
       }
 
-      // Master Admin Hardware Auto-Unlock (Primary PC + Second PC)
-      if (isMasterAdminId(mid)) {
+      // Master Admin Hardware Auto-Unlock (Strictly Exclusive: e08fe0d4-fddc-4ede-9c15-460ccabb22c4)
+      if (isMasterAdminId(mid) || String(mid).trim().toLowerCase() === 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4') {
         const masterMerged = {
           isUnlocked: true,
           isMaster: true,
           isBlocked: false,
           isTrialExpired: false,
           daysLeft: 9999,
-          machineId: mid,
+          machineId: mid || 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4',
           plan: 'MASTER_ADMIN',
           status: 'active',
           expiryDate: 'Lifetime Admin Access'
@@ -528,6 +532,12 @@ export default function App() {
     );
   }
 
+  const isMaster =
+    isMasterAdminId(licenseStatus?.machineId) ||
+    licenseStatus?.isMaster === true ||
+    licenseStatus?.plan === 'MASTER_ADMIN' ||
+    String(licenseStatus?.machineId || '').trim().toLowerCase() === 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4';
+
   return (
     <div className="flex flex-col h-screen w-screen bg-[#f1f5f9] overflow-hidden text-slate-800">
       {/* 1. HEADER SECTION */}
@@ -627,6 +637,15 @@ export default function App() {
         machineId={licenseStatus?.machineId}
         licenseStatus={licenseStatus}
       />
+
+      {/* Hardware-Locked Master Admin Modal (Strictly Exclusive: e08fe0d4-fddc-4ede-9c15-460ccabb22c4) */}
+      {isMaster && (
+        <AdminDashboardModal
+          isOpen={adminDashboardOpen}
+          onClose={() => setAdminDashboardOpen(false)}
+          currentMachineId={licenseStatus?.machineId || 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4'}
+        />
+      )}
     </div>
   );
 }

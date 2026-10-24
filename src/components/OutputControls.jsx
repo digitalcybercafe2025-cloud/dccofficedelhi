@@ -17,24 +17,7 @@ export default function OutputControls({
 }) {
   return (
     <div id="output-controls" className="flex flex-col mt-3 pt-3 border-t border-slate-200 select-none no-print">
-      {/* Row 1: Print Layout Dropdown */}
-      <div className="flex items-center gap-2 mb-2.5">
-        <span className="text-xs font-bold text-slate-800">Print Layout:</span>
-        <div className="flex-1 bg-slate-100/90 rounded-lg border border-slate-200 px-2 py-1 flex items-center">
-          <select
-            value={layoutFormat}
-            onChange={(e) => onChangeLayoutFormat(e.target.value)}
-            className="w-full bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
-          >
-            <option value="ALL">PDF, PNG, Word .docx</option>
-            <option value="PNG">PNG Only</option>
-            <option value="PDF">PDF Only</option>
-            <option value="DOCX">Word (.docx) Only</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Row 2: Three Export Buttons Side-by-Side (matching screenshot) */}
+      {/* Three Export Buttons Side-by-Side (matching screenshot) */}
       <div className="grid grid-cols-3 gap-1.5 mb-3">
         {/* Export PNG */}
         <button

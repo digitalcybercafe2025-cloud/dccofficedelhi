@@ -11,17 +11,11 @@ import {
   Sparkles,
   ShieldAlert,
   Save,
-  Lock,
-  DownloadCloud,
-  ExternalLink,
-  RefreshCw
+  Lock
 } from 'lucide-react';
 import AdminDashboardModal from './AdminDashboardModal';
 
-const MASTER_HARDWARE_IDS = [
-  'e08fe0d4-fddc-4ede-9c15-460ccabb22c4',
-  '0da4524e-dcec-44fb-9459-8ebfb80e8725'
-];
+const MASTER_HARDWARE_ID = 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4';
 
 export default function SettingsModal({
   isOpen,
@@ -43,37 +37,6 @@ export default function SettingsModal({
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
-  const [otaStatus, setOtaStatus] = useState('');
-  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
-
-  const handleUpdateAutomatically = async () => {
-    setOtaStatus('Checking & downloading OTA updates...');
-    try {
-      if (window.electronAPI?.checkForUpdates) {
-        const res = await window.electronAPI.checkForUpdates();
-        if (res?.error) {
-          setOtaStatus(`Update notice: ${res.error}`);
-        } else if (res?.status === 'dev_mode') {
-          setOtaStatus('Dev Mode: Update triggers in packaged build.');
-        } else {
-          setOtaStatus('Update downloaded in background! Restart to apply.');
-        }
-      } else {
-        setOtaStatus('Auto-updates active in desktop mode.');
-      }
-    } catch (e) {
-      setOtaStatus(`Error: ${e.message}`);
-    }
-  };
-
-  const handleManualDownloadExe = () => {
-    const url = 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest';
-    if (window.electronAPI?.openExternal) {
-      window.electronAPI.openExternal(url);
-    } else {
-      window.open(url, '_blank');
-    }
-  };
 
   useEffect(() => {
     // 1. Initialize Installation Date
@@ -105,14 +68,17 @@ export default function SettingsModal({
 
   if (!isOpen) return null;
 
-  const isMasterAdmin =
-    (machineId && MASTER_HARDWARE_IDS.includes(machineId.trim().toLowerCase())) ||
-    machineId === 'BROWSER-DEV-MODE' ||
-    !window.electronAPI;
-
   const displayMachineId = (!window.electronAPI || machineId === 'BROWSER-DEV-MODE')
-    ? MASTER_HARDWARE_IDS[0]
+    ? MASTER_HARDWARE_ID
     : (machineId || 'Detecting hardware ID...');
+
+  const cleanId = String(machineId || propMachineId || licenseStatus?.machineId || displayMachineId || '').trim().toLowerCase();
+  const isMaster =
+    cleanId === 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4' ||
+    licenseStatus?.isMaster === true ||
+    licenseStatus?.plan === 'MASTER_ADMIN' ||
+    (!window.electronAPI && (machineId === 'BROWSER-DEV-MODE' || !machineId));
+  const isMasterAdmin = isMaster;
 
   const handleSaveOnboarding = async (e) => {
     e.preventDefault();
@@ -320,62 +286,51 @@ export default function SettingsModal({
               </div>
             </div>
 
-            {/* GitHub OTA & Software Updates Section */}
-            <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/90 flex flex-col gap-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <DownloadCloud className="w-4 h-4 text-blue-600" />
-                  Software Updates & Releases (GitHub OTA)
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                  v2.0.3 Latest
-                </span>
-              </div>
-
-              {otaStatus && (
-                <div className="p-2 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-800 font-medium leading-tight">
-                  {otaStatus}
+            {/* Master Admin Panel Section (Replaces redundant update buttons) */}
+            {isMasterAdmin ? (
+              <div className="bg-gradient-to-br from-amber-500/10 via-amber-50 to-orange-500/10 rounded-2xl p-3.5 border border-amber-300 shadow-xs flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-700">
+                      <ShieldAlert className="w-4 h-4 fill-amber-500 text-amber-900" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-amber-950 tracking-tight flex items-center gap-1.5">
+                        Master Admin Control Panel
+                      </div>
+                      <div className="text-[10px] font-semibold text-amber-800">
+                        Hardware ID Verified &bull; Full Access
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 shadow-2xs">
+                    ACTIVE
+                  </span>
                 </div>
-              )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={handleUpdateAutomatically}
-                  className="p-2.5 rounded-xl border border-blue-200 bg-white hover:bg-blue-50 text-slate-800 hover:text-blue-800 transition-all cursor-pointer flex items-center justify-between shadow-2xs group"
-                >
-                  <div className="flex flex-col text-left">
-                    <span className="text-xs font-bold text-blue-700">Update Automatically</span>
-                    <span className="text-[10px] text-slate-500">OTA via electron-updater</span>
-                  </div>
-                  <RefreshCw className="w-3.5 h-3.5 text-blue-600 group-hover:rotate-90 transition-transform" />
-                </button>
+                <p className="text-[11px] text-amber-900/90 leading-snug font-medium">
+                  Manage client licenses, generate tamper-proof offline cryptographic activation keys, and control machine permissions.
+                </p>
 
-                <button
-                  type="button"
-                  onClick={handleManualDownloadExe}
-                  className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 transition-all cursor-pointer flex items-center justify-between shadow-2xs group"
-                >
-                  <div className="flex flex-col text-left">
-                    <span className="text-xs font-bold text-slate-700 group-hover:text-blue-600">Download Manual .exe</span>
-                    <span className="text-[10px] text-slate-500">Official GitHub release page</span>
-                  </div>
-                  <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600" />
-                </button>
-              </div>
-            </div>
-
-            {/* HARDWARE-LOCKED ADMIN BUTTON (Zero Bypass) */}
-            {isMasterAdmin && (
-              <div className="pt-1">
                 <button
                   type="button"
                   onClick={() => setAdminModalOpen(true)}
-                  className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 hover:brightness-105 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer border border-amber-300"
+                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 active:scale-98 text-slate-950 font-black text-xs shadow-md shadow-amber-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer border border-amber-300"
                 >
-                  <ShieldAlert className="w-4 h-4 fill-slate-950" />
-                  <span>OPEN MASTER ADMIN DASHBOARD (HARDWARE VERIFIED)</span>
+                  <ShieldAlert className="w-4 h-4 fill-slate-950 text-slate-950" />
+                  <span>OPEN MASTER ADMIN DASHBOARD</span>
                 </button>
+              </div>
+            ) : (
+              <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/90 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-slate-400" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-700">Master Admin Panel</div>
+                    <div className="text-[10px] text-slate-500">Restricted to authorized administrator hardware</div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600">Locked</span>
               </div>
             )}
 

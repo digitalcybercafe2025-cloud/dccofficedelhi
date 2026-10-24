@@ -695,12 +695,14 @@ export default function IDCardEditorCanvas({
           const backBox = isAadhaarType ? aadhaarBackCoords : bottomBoundingBox;
 
           const cropToCanvas = (box) => {
+            const scaleFactor = 3;
             const c = document.createElement('canvas');
-            c.width = box.width;
-            c.height = box.height;
+            c.width = Math.round(box.width * scaleFactor);
+            c.height = Math.round(box.height * scaleFactor);
             const ctx = c.getContext('2d');
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
+            ctx.scale(scaleFactor, scaleFactor);
             ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
             return c.toDataURL('image/png');
           };

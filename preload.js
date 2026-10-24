@@ -29,6 +29,12 @@ const apiElectronAPI = {
   generateOfflineKey: (payload) => ipcRenderer.invoke('generate-offline-key', payload),
   silentSync: (payload) => ipcRenderer.invoke('silent-sync', payload),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  onOtaStatus: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('ota-status-update', handler);
+    return () => ipcRenderer.removeListener('ota-status-update', handler);
+  },
   openExternal: (url) => ipcRenderer.invoke('open-external', url)
 };
 

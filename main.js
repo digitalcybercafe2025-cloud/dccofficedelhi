@@ -572,6 +572,10 @@ ipcMain.handle('update-client-status', async (event, { targetMachineId, newStatu
 });
 
 ipcMain.handle('generate-offline-key', async (event, { targetMachineId, planCode }) => {
+  const mid = licenseManager.machineId;
+  if (!supabaseLicensing.isMasterAdminId(mid)) {
+    throw new Error('UNAUTHORIZED: Access restricted exclusively to Master Hardware.');
+  }
   return supabaseLicensing.generateOfflineKey(targetMachineId, planCode);
 });
 
@@ -586,19 +590,38 @@ ipcMain.handle('silent-sync', async (event, payload) => {
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
+function sendOtaStatus(status, message, extra = {}) {
+  console.log(`[AutoUpdater] [${status}] ${message}`);
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
+    mainWindow.webContents.send('ota-status-update', { status, message, ...extra });
+  }
+}
+
+autoUpdater.on('checking-for-update', () => {
+  sendOtaStatus('checking', 'Checking for updates on GitHub...');
+});
+
 autoUpdater.on('update-available', (info) => {
-  console.log('[AutoUpdater] New update available:', info.version);
+  const v = info?.version ? `v${info.version}` : '';
+  sendOtaStatus('available', `Update Found ${v}. Downloading...`, { version: info?.version });
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  const percent = Math.round(progressObj.percent || 0);
+  sendOtaStatus('downloading', `Downloading update... ${percent}%`, { percent });
 });
 
 autoUpdater.on('update-downloaded', (info) => {
-  console.log('[AutoUpdater] Update downloaded:', info.version);
+  const v = info?.version ? `v${info.version}` : '';
+  sendOtaStatus('ready', `Update Ready (${v}). Click to Restart.`, { version: info?.version });
+
   if (mainWindow && !mainWindow.isDestroyed()) {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
-      title: 'Digital Cyber Cafe Update Ready',
-      message: `A new version (${info.version}) of Digital Cyber Cafe has been downloaded and is ready to install.`,
-      detail: 'Would you like to restart the application now to apply the update?',
-      buttons: ['Restart to Install', 'Later'],
+      title: 'Digital Cyber Cafe - Update Ready',
+      message: `A new version (${info.version}) has been downloaded and is ready to install.`,
+      detail: 'Restart the application now to apply the update immediately.',
+      buttons: ['Restart & Apply Update', 'Install on Exit'],
       defaultId: 0,
       cancelId: 1
     }).then((result) => {
@@ -609,17 +632,32 @@ autoUpdater.on('update-downloaded', (info) => {
   }
 });
 
+autoUpdater.on('update-not-available', (info) => {
+  sendOtaStatus('up-to-date', 'You are running the latest version of Digital Cyber Cafe.');
+});
+
 autoUpdater.on('error', (err) => {
-  console.warn('[AutoUpdater] Update check error:', err.message);
+  sendOtaStatus('error', `Update error: ${err.message}`);
 });
 
 ipcMain.handle('check-for-updates', async () => {
   if (app.isPackaged) {
     try {
-      return await autoUpdater.checkForUpdatesAndNotify();
+      sendOtaStatus('checking', 'Checking GitHub for updates...');
+      return await autoUpdater.checkForUpdates();
     } catch (e) {
+      sendOtaStatus('error', `Update check error: ${e.message}`);
       return { error: e.message };
     }
   }
-  return { status: 'dev_mode' };
+  return { status: 'dev_mode', message: 'Dev Mode: Auto-updates trigger in packaged build.' };
+});
+
+ipcMain.handle('install-update', () => {
+  try {
+    autoUpdater.quitAndInstall();
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });

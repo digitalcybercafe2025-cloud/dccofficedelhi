@@ -11,15 +11,15 @@ const SUPABASE_ANON_KEY =
 export const MASTER_ADMIN_IDS = [
   (import.meta.env.VITE_MASTER_MACHINE_ID || 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4')
     .trim()
-    .toLowerCase(),
-  '0da4524e-dcec-44fb-9459-8ebfb80e8725'
+    .toLowerCase()
 ];
 
 export const MASTER_MACHINE_ID = MASTER_ADMIN_IDS[0];
 
 export function isMasterAdminId(mid) {
   if (!mid) return false;
-  return MASTER_ADMIN_IDS.includes(String(mid).trim().toLowerCase());
+  const clean = String(mid).trim().toLowerCase();
+  return clean === 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4';
 }
 
 let client = null;

@@ -37,8 +37,24 @@ export default function Header({
   const [updateDropdownOpen, setUpdateDropdownOpen] = useState(false);
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [otaStatus, setOtaStatus] = useState('');
+  const [updateReady, setUpdateReady] = useState(false);
+
+  useEffect(() => {
+    if (window.electronAPI?.onOtaStatus) {
+      const unsub = window.electronAPI.onOtaStatus((payload) => {
+        if (!payload) return;
+        setOtaStatus(payload.message || '');
+        if (payload.status === 'ready') {
+          setUpdateReady(true);
+        }
+      });
+      return () => {
+        if (unsub) unsub();
+      };
+    }
+  }, []);
   const [updateInfo, setUpdateInfo] = useState({
-    currentVersion: 'v2.0.3',
+    currentVersion: 'v2.0.4',
     latestVersion: null,
     downloadUrl: 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest',
     releaseUrl: 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest',
@@ -90,21 +106,21 @@ export default function Header({
       const res = await fetch('https://api.github.com/repos/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest');
       if (res.ok) {
         const data = await res.json();
-        const tag = data.tag_name || data.name || 'v2.0.3';
+        const tag = data.tag_name || data.name || 'v2.0.4';
         const exeAsset = data.assets?.find((a) => a.name?.endsWith('.exe'));
         const dlUrl = exeAsset?.browser_download_url || data.html_url || 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest';
         const cleanTag = tag.replace(/^v/, '');
-        const cleanCurrent = '2.0.3';
+        const cleanCurrent = '2.0.4';
         const hasUpdate = cleanTag !== cleanCurrent && cleanTag > cleanCurrent;
 
         setUpdateInfo({
-          currentVersion: 'v2.0.3',
+          currentVersion: 'v2.0.4',
           latestVersion: tag.startsWith('v') ? tag : `v${tag}`,
           downloadUrl: dlUrl,
           releaseUrl: data.html_url || 'https://github.com/digitalcybercafe2025-cloud/dccofficedelhi/releases/latest',
           hasUpdate
         });
-        setOtaStatus(hasUpdate ? `New update (${tag}) available!` : 'You are on the latest version (v2.0.3)');
+        setOtaStatus(hasUpdate ? `New update (${tag}) available!` : 'You are on the latest version (v2.0.4)');
       } else {
         setOtaStatus('GitHub Release API active. Ready to download.');
       }
@@ -117,6 +133,10 @@ export default function Header({
   };
 
   const handleUpdateAutomatically = async () => {
+    if (updateReady && window.electronAPI?.installUpdate) {
+      window.electronAPI.installUpdate();
+      return;
+    }
     setOtaStatus('Triggering electron-updater background check...');
     try {
       if (window.electronAPI?.checkForUpdates) {
@@ -126,7 +146,7 @@ export default function Header({
         } else if (res?.status === 'dev_mode') {
           setOtaStatus('Dev Mode: Auto-updates trigger in installed .exe');
         } else {
-          setOtaStatus('Auto-update initiated. Will notify when ready.');
+          setOtaStatus('Update Found. Downloading in background...');
         }
       } else {
         setOtaStatus('Auto-update is active in desktop app mode.');
@@ -294,7 +314,7 @@ export default function Header({
                     </div>
                     <div>
                       <div className="text-xs font-bold text-slate-800 leading-tight">Software Updates</div>
-                      <div className="text-[10px] text-slate-500">Installed: v2.0.3</div>
+                      <div className="text-[10px] text-slate-500">Installed: v2.0.4</div>
                     </div>
                   </div>
                   <button
@@ -318,17 +338,21 @@ export default function Header({
                   <button
                     type="button"
                     onClick={handleUpdateAutomatically}
-                    className="w-full text-left p-2.5 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50/40 hover:from-blue-100 hover:to-indigo-100 text-slate-800 transition-all cursor-pointer flex items-center justify-between group shadow-2xs"
+                    className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between group shadow-2xs ${
+                      updateReady
+                        ? 'border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 ring-2 ring-emerald-500/20'
+                        : 'border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50/40 hover:from-blue-100 hover:to-indigo-100 text-slate-800'
+                    }`}
                   >
                     <div className="flex flex-col">
-                      <span className="text-xs font-bold text-blue-700 group-hover:text-blue-800">
-                        Update Automatically
+                      <span className={`text-xs font-bold ${updateReady ? 'text-emerald-700' : 'text-blue-700 group-hover:text-blue-800'}`}>
+                        {updateReady ? 'Update Ready. Click to Restart' : 'Update Automatically'}
                       </span>
                       <span className="text-[10px] text-slate-500">
-                        Invokes electron-updater OTA
+                        {updateReady ? 'Click to restart & install now' : 'Invokes electron-updater OTA'}
                       </span>
                     </div>
-                    <RefreshCw className="w-3.5 h-3.5 text-blue-600 shrink-0 group-hover:rotate-90 transition-transform" />
+                    <RefreshCw className={`w-3.5 h-3.5 ${updateReady ? 'text-emerald-600 animate-spin' : 'text-blue-600'} shrink-0 group-hover:rotate-90 transition-transform`} />
                   </button>
 
                   {/* Action 2: Download Manual .exe (opens direct GitHub .exe link) */}

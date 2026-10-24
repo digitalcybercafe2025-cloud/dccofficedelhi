@@ -8,6 +8,8 @@ import subprocess
 import multiprocessing
 import pickle
 import tempfile
+import traceback
+import datetime
 
 # Safe stdout/stderr initialization for Windows --noconsole execution
 class _SafeStream:
@@ -187,15 +189,65 @@ def handle_405(e):
         return jsonify({"error": f"Method {request.method} not allowed for {request.path}"}), 405
     return "Method not allowed", 405
 
+BACKEND_ERROR_LOG_PATHS = [
+    os.path.join(tempfile.gettempdir(), 'backend_error.log'),
+    os.path.join(APP_ROOT, 'backend_error.log'),
+    os.path.join(os.getcwd(), 'backend_error.log')
+]
+
+def log_backend_error(context_msg, exc=None):
+    try:
+        ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        tb = traceback.format_exc() if exc else ""
+        log_entry = f"\n[{ts}] ERROR: {context_msg}\n"
+        if exc:
+            log_entry += f"Exception: {type(exc).__name__}: {str(exc)}\nTraceback:\n{tb}\n"
+        print(log_entry, file=sys.stderr)
+        for lp in BACKEND_ERROR_LOG_PATHS:
+            try:
+                with open(lp, "a", encoding="utf-8") as f:
+                    f.write(log_entry)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+def _global_sys_excepthook(exctype, value, tb_obj):
+    err_text = "".join(traceback.format_exception(exctype, value, tb_obj))
+    log_backend_error(f"Uncaught System Exception: {value}\n{err_text}")
+    try:
+        sys.__excepthook__(exctype, value, tb_obj)
+    except Exception:
+        pass
+
+sys.excepthook = _global_sys_excepthook
+
 @app.errorhandler(413)
 def handle_413(e):
-    return jsonify({"error": "File size exceeds 64MB limit"}), 413
+    return jsonify({"success": False, "error": "File size exceeds 64MB limit"}), 413
 
 @app.errorhandler(500)
 def handle_500(e):
+    log_backend_error(f"Internal 500 Error at {request.method} {request.path}", e)
     if request.path.startswith('/api/'):
-        return jsonify({"error": "Internal server error"}), 500
-    return "Internal server error", 500
+        return jsonify({
+            "success": False,
+            "error": f"Internal server error: {str(e)}",
+            "path": request.path
+        }), 500
+    return f"Internal server error: {str(e)}", 500
+
+@app.errorhandler(Exception)
+def handle_global_exception(e):
+    log_backend_error(f"Unhandled Exception at {request.method} {request.path}", e)
+    if request.path.startswith('/api/'):
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "type": type(e).__name__,
+            "path": request.path
+        }), 500
+    return f"Internal server error: {str(e)}", 500
 
 def decode_base64_image(image_data_uri):
     """Decode base64 data URI to PIL Image"""
@@ -1661,6 +1713,10 @@ def auto_crop_idcard():
             def extract_b64(coords):
                 x, y, w, h = coords["x"], coords["y"], coords["width"], coords["height"]
                 cropped = np_img[y:y+h, x:x+w]
+                if w > 0 and h > 0 and w < 1012:
+                    target_w = 1012
+                    target_h = int(round(target_w * (h / float(w))))
+                    cropped = cv2.resize(cropped, (target_w, target_h), interpolation=cv2.INTER_CUBIC)
                 enhanced_pil = enhance_card_text(cropped)
                 return encode_pil_to_base64(enhanced_pil, format="PNG")
 
@@ -1736,6 +1792,12 @@ def auto_crop_idcard():
             x2 = min(w_img, x + w + pad_x)
             y2 = min(h_img, y + h + pad_y)
             cropped_np = np_img[y1:y2, x1:x2]
+            cw = x2 - x1
+            ch = y2 - y1
+            if cw > 0 and ch > 0 and cw < 1012:
+                target_w = 1012
+                target_h = int(round(target_w * (ch / float(cw))))
+                cropped_np = cv2.resize(cropped_np, (target_w, target_h), interpolation=cv2.INTER_CUBIC)
             detected = True
             crop_coords = {"x": x1, "y": y1, "width": x2 - x1, "height": y2 - y1}
         else:
@@ -2072,11 +2134,11 @@ def perspective_crop_idcard():
         left_h = np.linalg.norm(pts_src[3] - pts_src[0])
         right_h = np.linalg.norm(pts_src[2] - pts_src[1])
 
-        dst_w = int(max(top_w, bot_w, 600))
+        dst_w = int(max(top_w, bot_w, 1012))
         if target_aspect > 0:
             dst_h = int(dst_w * target_aspect)
         else:
-            dst_h = int(max(left_h, right_h, 400))
+            dst_h = int(max(left_h, right_h, 638))
 
         pts_dst = np.array([
             [0, 0],
@@ -2086,7 +2148,7 @@ def perspective_crop_idcard():
         ], dtype=np.float32)
 
         M = cv2.getPerspectiveTransform(pts_src, pts_dst)
-        warped = cv2.warpPerspective(np_img, M, (dst_w, dst_h), flags=cv2.INTER_LANCZOS4)
+        warped = cv2.warpPerspective(np_img, M, (dst_w, dst_h), flags=cv2.INTER_CUBIC)
 
         # Apply scanner effect if specified
         if scan_mode and scan_mode != 'original':
