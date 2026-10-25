@@ -67,8 +67,13 @@ export default function PrintHubWindow() {
     document.title = `Print Hub - ${selectedPrinter || 'EPSON L3560'}`;
   }, [selectedPrinter]);
 
-  // Handle direct silent print
-  const handleDirectPrint = () => {
+  // Handle direct print - opens native vendor preferences dialog & executes print
+  const handleDirectPrint = async () => {
+    try {
+      await handleOpenPreferences();
+    } catch (e) {
+      console.warn('Preferences launch notice:', e);
+    }
     if (window.ipcRenderer?.send) {
       window.ipcRenderer.send('execute-direct-print', {
         printerName: selectedPrinter,
@@ -367,10 +372,10 @@ export default function PrintHubWindow() {
             type="button"
             onClick={handleDirectPrint}
             className="w-full py-2.5 bg-[#0066cc] hover:bg-[#0052a3] text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-[0.99]"
-            title="Fast direct silent print to selected printer"
+            title="Open printer preferences and send print job"
           >
             <Printer className="w-4 h-4" />
-            <span>Direct Print</span>
+            <span>Direct Print (Preferences & Spool)</span>
           </button>
 
           {/* Secondary Action Row: Cancel & Preferences... */}
