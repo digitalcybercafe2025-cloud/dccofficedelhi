@@ -40,6 +40,7 @@ try {
 } catch (e) {}
 
 const PLAN_OPTIONS = [
+  { code: '7D', label: '7-Day Test Key (Extension)', days: 7 },
   { code: '1M', label: '1 Month (30 Days)', days: 30 },
   { code: '3M', label: '3 Months (90 Days)', days: 90 },
   { code: '6M', label: '6 Months (180 Days)', days: 180 },

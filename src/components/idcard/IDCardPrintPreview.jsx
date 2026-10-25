@@ -291,20 +291,6 @@ export default function IDCardPrintPreview({
         data-html2canvas-ignore="true"
         className="mt-2.5 pt-2 border-t border-slate-200 no-print select-none"
       >
-        {/* Print Layout Dropdown */}
-        <div className="flex items-center justify-between mb-2 text-xs">
-          <span className="font-bold text-slate-700">Print Layout:</span>
-          <select
-            value={layoutFormat}
-            onChange={(e) => onChangeLayoutFormat(e.target.value)}
-            className="bg-white border border-slate-300 rounded-lg px-2 py-0.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
-          >
-            <option value="PNG">PNG Only</option>
-            <option value="PDF">PDF Layout</option>
-            <option value="DOCX">Word .docx</option>
-          </select>
-        </div>
-
         {/* Multi-Export Buttons Row */}
         <div className="grid grid-cols-3 gap-1.5 mb-2">
           {/* PNG Button */}

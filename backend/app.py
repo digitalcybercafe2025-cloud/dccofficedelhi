@@ -94,44 +94,81 @@ def get_cascade_path(cname):
     return candidates[0] if candidates else cname
 
 # Configure offline model cache for rembg (IS-Net / U2Net ONNX Engine) before rembg import
-# Priority: sys._MEIPASS / models for zero-dependency offline packaged execution
+# Priority: exe_dir / sys._MEIPASS / models for zero-dependency offline packaged execution
 models_search_dirs = []
+if getattr(sys, 'frozen', False):
+    exe_dir = os.path.dirname(sys.executable)
+    models_search_dirs.append(os.path.join(exe_dir, 'models'))
+    models_search_dirs.append(os.path.join(exe_dir, 'backend', 'models'))
+    models_search_dirs.append(os.path.join(exe_dir, 'resources', 'backend', 'models'))
 meipass = getattr(sys, '_MEIPASS', None)
 if meipass:
     models_search_dirs.append(os.path.join(meipass, 'models'))
     models_search_dirs.append(os.path.join(meipass, 'backend', 'models'))
 models_search_dirs.append(get_resource_path('models'))
 models_search_dirs.append(os.path.join(APP_ROOT, 'models'))
+models_search_dirs.append(os.path.join(os.path.dirname(APP_ROOT), 'backend', 'models'))
 models_search_dirs.append(os.path.join(os.path.dirname(APP_ROOT), 'resources_build', 'backend', 'models'))
+models_search_dirs.append(os.path.expanduser('~/.u2net'))
 
-for md in models_search_dirs:
-    if os.path.exists(md):
-        os.environ['U2NET_HOME'] = md
-        print(f"[Rembg Init] Offline model directory bound to U2NET_HOME: {md}")
-        break
-
+REMBG_AVAILABLE = False
+rembg_session = None
 REMBG_INIT_ERROR = None
 
-# Rembg session initialization: IS-Net (isnet-general-use) for fine hair, ear, and body delineation
-try:
-    from rembg import remove, new_session
-    REMBG_AVAILABLE = True
+def init_rembg_session():
+    global rembg_session, REMBG_AVAILABLE, REMBG_INIT_ERROR
+    for md in models_search_dirs:
+        if os.path.exists(md):
+            isnet_p = os.path.join(md, 'isnet-general-use.onnx')
+            u2netp_p = os.path.join(md, 'u2netp.onnx')
+            u2net_p = os.path.join(md, 'u2net.onnx')
+            if os.path.exists(isnet_p) or os.path.exists(u2netp_p) or os.path.exists(u2net_p):
+                os.environ['U2NET_HOME'] = md
+                print(f"[Rembg Init] Bound U2NET_HOME to: {md}")
+                break
+
     try:
-        rembg_session = new_session("isnet-general-use")
-        print("Loaded rembg model: isnet-general-use (IS-Net)")
-    except Exception as e_isnet:
-        REMBG_INIT_ERROR = f"IS-Net error: {e_isnet}"
-        print(f"IS-Net load notice: {e_isnet}, fallback to u2net", file=sys.stderr)
+        from rembg import remove, new_session
+        REMBG_AVAILABLE = True
         try:
-            rembg_session = new_session("u2net")
-        except Exception as e_u2:
-            rembg_session = None
-            REMBG_INIT_ERROR += f" | U2Net error: {e_u2}"
-except Exception as e:
-    REMBG_AVAILABLE = False
-    rembg_session = None
-    REMBG_INIT_ERROR = f"Rembg import error: {e}"
-    print(f"Warning: rembg initialization error: {e}", file=sys.stderr)
+            rembg_session = new_session("isnet-general-use")
+            print("Loaded rembg model: isnet-general-use (IS-Net)")
+        except Exception as e_isnet:
+            REMBG_INIT_ERROR = f"IS-Net error: {e_isnet}"
+            print(f"IS-Net load notice: {e_isnet}, fallback to u2net", file=sys.stderr)
+            try:
+                rembg_session = new_session("u2net")
+            except Exception as e_u2:
+                try:
+                    rembg_session = new_session("u2netp")
+                except Exception:
+                    rembg_session = None
+                    REMBG_INIT_ERROR += f" | U2Net error: {e_u2}"
+    except Exception as e:
+        REMBG_AVAILABLE = False
+        rembg_session = None
+        REMBG_INIT_ERROR = f"Rembg import error: {e}"
+        print(f"Warning: rembg initialization error: {e}", file=sys.stderr)
+
+init_rembg_session()
+
+def opencv_portrait_cutout(pil_img):
+    """Reliable fallback background cutout using OpenCV GrabCut algorithm when neural model is unavailable"""
+    try:
+        np_img = np.array(pil_img.convert('RGB'))
+        h, w = np_img.shape[:2]
+        mask = np.zeros((h, w), np.uint8)
+        bgdModel = np.zeros((1, 65), np.float64)
+        fgdModel = np.zeros((1, 65), np.float64)
+        rect = (int(w * 0.04), int(h * 0.04), int(w * 0.92), int(h * 0.92))
+        cv2.grabCut(np_img, mask, rect, bgdModel, fgdModel, 3, cv2.GC_INIT_WITH_RECT)
+        mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
+        mask2 = cv2.GaussianBlur(mask2 * 255, (5, 5), 0)
+        cutout_np = np.dstack((np_img, mask2))
+        return Image.fromarray(cutout_np, 'RGBA')
+    except Exception as e:
+        print(f"OpenCV GrabCut fallback error: {e}")
+        return pil_img.convert('RGBA')
 
 # Native Windows Print Spooler Integration (pywin32)
 try:
@@ -296,31 +333,28 @@ def remove_background():
         pil_img = decode_base64_image(image_str)
 
         # High-accuracy IS-Net background removal with hair & ear edge preservation
-        if REMBG_AVAILABLE:
-            global rembg_session
-            if rembg_session is None:
-                try:
-                    rembg_session = new_session("isnet-general-use")
-                except Exception:
-                    try:
-                        rembg_session = new_session("u2net")
-                    except Exception:
-                        rembg_session = None
+        cutout = None
+        global rembg_session
+        if rembg_session is None:
+            init_rembg_session()
 
+        if rembg_session is not None:
             try:
-                # With IS-Net, native fine boundary delineation avoids chopping fine hair and ears
-                if rembg_session:
-                    cutout = remove(pil_img, session=rembg_session)
-                else:
-                    cutout = remove(pil_img)
-            except Exception as re:
-                print(f"Rembg IS-Net processing notice: {re}")
+                from rembg import remove
+                cutout = remove(pil_img, session=rembg_session)
+            except Exception as e_cut:
+                print(f"[Rembg Execution Notice] {e_cut}, trying u2net fallback...")
                 try:
-                    cutout = remove(pil_img)
-                except Exception:
-                    cutout = pil_img
-        else:
-            cutout = pil_img
+                    from rembg import remove, new_session
+                    fb_session = new_session("u2net")
+                    cutout = remove(pil_img, session=fb_session)
+                except Exception as e_fb:
+                    print(f"[Rembg Fallback Notice] {e_fb}")
+                    cutout = None
+
+        # Clean fallback: OpenCV GrabCut portrait cutout if neural models fail
+        if cutout is None or cutout.mode != 'RGBA':
+            cutout = opencv_portrait_cutout(pil_img)
 
         # Apply background color if specified (or transparent if 'transparent')
         if bg_color and bg_color.lower() != 'transparent':
@@ -1630,9 +1664,10 @@ def detect_id_photo(front_bgr):
     }
 
 def enhance_card_text(cropped_bgr):
-    """Enhance text contrast and sharpness so Name, DOB, Gender, and barcode appear dark, bold, and crisp"""
+    """Enhance text contrast and sharpness so Name, DOB, Gender, and barcode appear dark, bold, and crisp (300 DPI high-contrast)"""
     try:
-        cropped_rgba = cv2.cvtColor(cropped_bgr, cv2.COLOR_BGR2RGBA)
+        contrast_bgr = cv2.convertScaleAbs(cropped_bgr, alpha=1.2, beta=-10)
+        cropped_rgba = cv2.cvtColor(contrast_bgr, cv2.COLOR_BGR2RGBA)
         pil_card = Image.fromarray(cropped_rgba)
         enhancer_s = ImageEnhance.Sharpness(pil_card)
         sharp_card = enhancer_s.enhance(1.35)
@@ -2521,6 +2556,18 @@ def open_printer_preferences():
         if not target_printer:
             return jsonify({"success": False, "error": "No installed printer found."}), 404
 
+        # Launch Windows native vendor preferences GUI dialog via PrintUIEntry in background
+        try:
+            import subprocess
+            subprocess.Popen(['rundll32.exe', 'printui.dll,PrintUIEntry', '/e', '/n', target_printer], shell=False)
+            return jsonify({
+                "success": True,
+                "message": f"Opened native printer preferences for '{target_printer}'",
+                "printer": target_printer
+            })
+        except Exception as e_rundll:
+            print(f"rundll32 notice: {e_rundll}")
+
         hPrinter = win32print.OpenPrinter(target_printer)
         try:
             pinfo = win32print.GetPrinter(hPrinter, 2)
@@ -2683,7 +2730,12 @@ def native_print():
             base64_image = base64_image.split(',', 1)[1]
         img_bytes = base64.b64decode(base64_image)
         pil_image = Image.open(io.BytesIO(img_bytes))
-        if pil_image.mode != 'RGB':
+        if pil_image.mode in ('RGBA', 'LA') or (pil_image.mode == 'P' and 'transparency' in pil_image.info):
+            alpha_img = pil_image.convert('RGBA')
+            white_bg = Image.new('RGB', alpha_img.size, (255, 255, 255))
+            white_bg.paste(alpha_img, mask=alpha_img.split()[3])
+            pil_image = white_bg
+        elif pil_image.mode != 'RGB':
             pil_image = pil_image.convert('RGB')
     except Exception as img_err:
         return jsonify({"success": False, "error": f"Failed to decode image data: {img_err}"}), 400

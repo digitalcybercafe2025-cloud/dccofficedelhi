@@ -28,8 +28,34 @@ export async function checkBackendHealth() {
   }
 }
 
+export async function ensureBase64Image(imgSrc) {
+  if (!imgSrc) return '';
+  if (typeof imgSrc === 'string' && imgSrc.startsWith('data:image')) {
+    return imgSrc;
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch (e) {
+        resolve(imgSrc);
+      }
+    };
+    img.onerror = () => resolve(imgSrc);
+    img.src = imgSrc;
+  });
+}
+
 export async function removeBackground(imageBase64, bgColor = '#2b7fff') {
   try {
+    const cleanB64 = await ensureBase64Image(imageBase64);
     const res = await fetch(`${API_BASE}/remove-bg`, {
       method: 'POST',
       mode: 'cors',
@@ -37,7 +63,7 @@ export async function removeBackground(imageBase64, bgColor = '#2b7fff') {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({ image: imageBase64, bgColor })
+      body: JSON.stringify({ image: cleanB64, bgColor })
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Failed to remove background');

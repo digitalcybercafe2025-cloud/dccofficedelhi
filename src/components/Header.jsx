@@ -279,6 +279,23 @@ export default function Header({
             <Settings className="w-4 h-4" />
           </button>
 
+          {/* New Update Ready: 1-Click Install Notification Pill */}
+          {updateReady && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.electronAPI?.installUpdate) {
+                  window.electronAPI.installUpdate();
+                }
+              }}
+              title="A new software update has been downloaded. Click to restart and install immediately."
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/30 animate-pulse cursor-pointer transition-all"
+            >
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <span>New Update Ready: Click to Install</span>
+            </button>
+          )}
+
           {/* Dynamic GitHub OTA Check Updates Pill & Dropdown */}
           <div className="relative" ref={updateDropdownRef}>
             <button

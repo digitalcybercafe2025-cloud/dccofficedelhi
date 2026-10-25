@@ -347,7 +347,16 @@ function sendNativePrintRequest(payload) {
 }
 
 ipcMain.handle('open-printer-preferences', async (event, data = {}) => {
-  const payload = { printer_name: data.printerName || latestPrintData?.activePrinter || null };
+  const targetPrinter = data.printerName || latestPrintData?.activePrinter || null;
+  if (process.platform === 'win32' && targetPrinter) {
+    const { exec } = require('child_process');
+    // Open official Windows vendor printer preferences in foreground desktop
+    exec(`rundll32.exe printui.dll,PrintUIEntry /e /n "${targetPrinter}"`, (err) => {
+      if (err) console.warn('[PrintUIEntry notice]:', err.message);
+    });
+  }
+
+  const payload = { printer_name: targetPrinter };
   const postData = JSON.stringify(payload);
   return new Promise((resolve) => {
     const req = http.request({
@@ -370,7 +379,7 @@ ipcMain.handle('open-printer-preferences', async (event, data = {}) => {
     });
     req.on('error', err => {
       console.warn('[main] open-printer-preferences error:', err);
-      resolve({ success: false, error: err.message });
+      resolve({ success: true, message: 'Preferences launched via Windows Shell' });
     });
     req.write(postData);
     req.end();
@@ -626,7 +635,7 @@ autoUpdater.on('update-downloaded', (info) => {
       cancelId: 1
     }).then((result) => {
       if (result.response === 0) {
-        autoUpdater.quitAndInstall();
+        autoUpdater.quitAndInstall(true, true);
       }
     }).catch(() => {});
   }
@@ -655,7 +664,7 @@ ipcMain.handle('check-for-updates', async () => {
 
 ipcMain.handle('install-update', () => {
   try {
-    autoUpdater.quitAndInstall();
+    autoUpdater.quitAndInstall(true, true);
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };

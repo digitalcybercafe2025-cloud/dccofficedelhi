@@ -76,6 +76,12 @@ def build_backend():
         "--exclude-module", "pkg_resources",
         "--exclude-module", "tkinter",
         "--exclude-module", "sympy",
+        "--exclude-module", "numba",
+        "--exclude-module", "llvmlite",
+        "--exclude-module", "networkx",
+        "--exclude-module", "PyQt5",
+        "--exclude-module", "PySide2",
+        "--exclude-module", "PySide6",
         # Essential Lightweight Stack
         "--hidden-import", "win32print",
         "--hidden-import", "win32ui",
@@ -105,8 +111,6 @@ def build_backend():
     ]
     if cv2_data_dir and os.path.exists(cv2_data_dir):
         cmd.extend(["--add-data", f"{cv2_data_dir}{os.pathsep}cv2/data"])
-    if os.path.exists(models_dir):
-        cmd.extend(["--add-data", f"{models_dir}{os.pathsep}models"])
     cmd.append(backend_script)
 
     print("\n[Step 1/3] Compiling ultra-fast lightweight Python backend...")

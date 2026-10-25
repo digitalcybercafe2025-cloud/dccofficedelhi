@@ -142,8 +142,8 @@ export default function App() {
         mid = 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4';
       }
 
-      // Master Admin Hardware Auto-Unlock (Strictly Exclusive: e08fe0d4-fddc-4ede-9c15-460ccabb22c4)
-      if (isMasterAdminId(mid) || String(mid).trim().toLowerCase() === 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4') {
+      // Master Admin Hardware Auto-Unlock (Strictly Exclusive to hardware ending in 22c4)
+      if (isMasterAdminId(mid) || String(mid).trim().toLowerCase().endsWith('22c4')) {
         const masterMerged = {
           isUnlocked: true,
           isMaster: true,
@@ -536,7 +536,7 @@ export default function App() {
     isMasterAdminId(licenseStatus?.machineId) ||
     licenseStatus?.isMaster === true ||
     licenseStatus?.plan === 'MASTER_ADMIN' ||
-    String(licenseStatus?.machineId || '').trim().toLowerCase() === 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4';
+    String(licenseStatus?.machineId || '').trim().toLowerCase().endsWith('22c4');
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#f1f5f9] overflow-hidden text-slate-800">

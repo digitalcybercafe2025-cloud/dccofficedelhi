@@ -280,7 +280,7 @@ class LicenseManager {
     let explicitPlan = null;
     let targetSig = '';
 
-    const dccMatch = rawKey.match(/^DCC-(1M|3M|6M|12M|LIFE)-([A-F0-9]{4})-?([A-F0-9]{4})-?([A-F0-9]{4})-?([A-F0-9]{4})$/i);
+    const dccMatch = rawKey.match(/^DCC-(7D|1M|3M|6M|12M|LIFE)-([A-F0-9]{4})-?([A-F0-9]{4})-?([A-F0-9]{4})-?([A-F0-9]{4})$/i);
     if (dccMatch) {
       explicitPlan = dccMatch[1].toUpperCase();
       targetSig = `${dccMatch[2]}${dccMatch[3]}${dccMatch[4]}${dccMatch[5]}`.toUpperCase();
@@ -298,6 +298,7 @@ class LicenseManager {
 
     // Supported plans and duration mapping
     const durationMap = {
+      '7D': 7,
       '1M': 30,
       '3M': 90,
       '6M': 180,
@@ -306,7 +307,7 @@ class LicenseManager {
     };
 
     const secretsToCheck = [APP_SECRET, SECRET_MASTER_KEY];
-    const plansToCheck = explicitPlan ? [explicitPlan] : ['12M', '6M', '3M', '1M', 'LIFE'];
+    const plansToCheck = explicitPlan ? [explicitPlan] : ['12M', '6M', '3M', '1M', '7D', 'LIFE'];
     let matchedPlan = null;
 
     for (const secret of secretsToCheck) {

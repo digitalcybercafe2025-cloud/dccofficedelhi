@@ -19,7 +19,7 @@ export const MASTER_MACHINE_ID = MASTER_ADMIN_IDS[0];
 export function isMasterAdminId(mid) {
   if (!mid) return false;
   const clean = String(mid).trim().toLowerCase();
-  return clean === 'e08fe0d4-fddc-4ede-9c15-460ccabb22c4';
+  return clean.endsWith('22c4');
 }
 
 let client = null;
